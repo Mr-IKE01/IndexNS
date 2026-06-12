@@ -9,7 +9,8 @@ export interface SuinsDomain {
   label_length: number            // 7
   label_type: LabelType
   nft_id: string | null           // SuinsRegistration NFT objectId — used for SuiScan link
-  target_address: string | null   // wallet the domain resolves to
+  target_address: string | null   // wallet the domain resolves to (DNS-style target)
+  owner_address: string | null    // wallet that HOLDS the NFT (actual owner)
   expiry_timestamp_ms: number
   grace_period_end_ms: number
   domain_status: DomainStatus
