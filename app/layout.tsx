@@ -3,7 +3,11 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'SuiNS Indexer',
-  description: 'Private SuiNS domain indexer',
+  description: 'Private SuiNS domain indexer — tracks expiry, grace periods, and ownership',
+  robots: {
+    index: false,
+    follow: false,
+  },
 }
 
 export default function RootLayout({
@@ -13,7 +17,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="bg-zinc-950 antialiased">{children}</body>
     </html>
   )
 }
