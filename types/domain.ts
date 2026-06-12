@@ -49,7 +49,7 @@ export interface DomainsResponse {
 }
 
 export interface SearchResponse {
-  data: Pick
+  data: Pick<
     SuinsDomain,
     'name' | 'label' | 'label_length' | 'label_type' |
     'nft_id' | 'expiry_timestamp_ms' | 'grace_period_end_ms' | 'domain_status'
