@@ -6,6 +6,9 @@ import { FilterBar } from './filter-bar'
 import { DomainList } from './domain-list'
 import { Pagination } from './pagination'
 import { useDomains } from '@/hooks/use-domains'
+import { useVisitSync } from '@/hooks/use-visit-sync'
+import { useRealtime } from '@/hooks/use-realtime'
+import { formatTimeRemaining } from '@/lib/sui/time'
 import type { FilterParams, DomainStatus, SuinsDomain, SyncState } from '@/types/domain'
 
 const DEFAULT_FILTERS: FilterParams = {
@@ -33,6 +36,9 @@ export function IndexerPage({
   const [filters, setFilters] = useState<FilterParams>(DEFAULT_FILTERS)
   const [searchInput, setSearchInput] = useState('')
 
+  // Fire a background visit-sync ping once on mount
+  useVisitSync()
+
   // Debounce search input → filters.search (300ms)
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -41,13 +47,15 @@ export function IndexerPage({
     return () => clearTimeout(timer)
   }, [searchInput])
 
-  const { domains, total, loading, error } = useDomains(filters, {
+  const { domains, total, loading, error, refetch } = useDomains(filters, {
     initialDomains: filters.tab === 'active' ? initialDomains : [],
     initialTotal:   filters.tab === 'active' ? initialTotal   : 0,
   })
 
+  // Refetch when Realtime detects any change to suins_domains
+  useRealtime(refetch)
+
   // When tab changes: reset ALL filters + go to page 1
-  // Default to window=7d for "Just Dropped" tab (most useful view)
   const handleTabChange = useCallback((tab: DomainStatus) => {
     setFilters({
       ...DEFAULT_FILTERS,
@@ -67,7 +75,6 @@ export function IndexerPage({
 
   const handlePageChange = useCallback((page: number) => {
     setFilters((f) => ({ ...f, page }))
-    // Scroll to top of list smoothly
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
 
@@ -78,6 +85,10 @@ export function IndexerPage({
 
   const bootstrapInProgress =
     syncState && !syncState.bootstrap_complete
+
+  const lastSyncedLabel = syncState?.last_synced_at
+    ? formatTimeRemaining(new Date(syncState.last_synced_at).getTime())
+    : null
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -96,6 +107,11 @@ export function IndexerPage({
             {syncState && (
               <span className="hidden sm:inline text-xs text-zinc-600 tabular-nums">
                 {syncState.total_indexed?.toLocaleString()} indexed
+              </span>
+            )}
+            {lastSyncedLabel && (
+              <span className="hidden md:inline text-xs text-zinc-700" title="Last sync">
+                synced {lastSyncedLabel}
               </span>
             )}
             <button
