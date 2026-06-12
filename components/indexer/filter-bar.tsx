@@ -44,6 +44,13 @@ const WINDOWS: { value: FilterParams['window']; label: string }[] = [
   { value: '30d',   label: '30 Days'},
 ]
 
+const SORTS: { value: FilterParams['sort']; label: string }[] = [
+  { value: 'expiry_asc',  label: 'Soonest first'  },
+  { value: 'expiry_desc', label: 'Latest first'   },
+  { value: 'grace_asc',   label: 'Grace ending soon' },
+  { value: 'name_asc',    label: 'Name (A-Z)'     },
+]
+
 function Chip({
   active,
   onClick,
@@ -101,24 +108,38 @@ export function FilterBar({
         )}
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 pointer-events-none" />
-        <Input
-          type="text"
-          value={filters.search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search domains by name…"
-          className="pl-9 pr-8 bg-zinc-900 border-zinc-800 text-sm text-white placeholder:text-zinc-600 focus-visible:ring-indigo-500 h-9"
-        />
-        {filters.search && (
-          <button
-            onClick={() => onSearchChange('')}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-300 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
+      {/* Search + Sort */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 pointer-events-none" />
+          <Input
+            type="text"
+            value={filters.search}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Search domains by name…"
+            className="pl-9 pr-8 bg-zinc-900 border-zinc-800 text-sm text-white placeholder:text-zinc-600 focus-visible:ring-indigo-500 h-9"
+          />
+          {filters.search && (
+            <button
+              onClick={() => onSearchChange('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-300 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        <select
+          value={filters.sort}
+          onChange={(e) => onFilterChange('sort', e.target.value as FilterParams['sort'])}
+          className="bg-zinc-900 border border-zinc-800 text-sm text-zinc-300 rounded-md px-2.5 h-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 shrink-0"
+        >
+          {SORTS.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Filter chips — scrollable on mobile */}
