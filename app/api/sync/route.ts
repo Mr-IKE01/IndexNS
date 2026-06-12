@@ -32,6 +32,7 @@ function getGraphQLClient() {
 
 export async function POST(request: NextRequest) {
   const secret = request.headers.get('x-sync-secret')
+    ?? request.nextUrl.searchParams.get('secret')
   if (!secret || secret !== process.env.SYNC_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -349,3 +350,4 @@ async function fetchDomainByName(domainName: string) {
     return null
   }
 }
+export const GET = POST
