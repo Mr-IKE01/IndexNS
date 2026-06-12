@@ -3,9 +3,34 @@ import { parseExpiryMs, computeGracePeriodEnd, computeDomainStatus } from './tim
 
 type DomainRow = Omit<SuinsDomain, 'id' | 'created_at'>
 
+// Minimal shape of the owner field returned by sui.getObjects()
+// owner.$kind === 'AddressOwner' means a wallet directly holds the object
+interface ObjectOwnerLike {
+  $kind?: string
+  AddressOwner?: string
+}
+
+/**
+ * Extracts the wallet address from an object's `owner` field.
+ * Returns null if the object isn't directly owned by an address
+ * (e.g. shared, immutable, or object-owned).
+ */
+export function extractOwnerAddress(owner: unknown): string | null {
+  if (!owner || typeof owner !== 'object') return null
+  const o = owner as ObjectOwnerLike
+  if (o.$kind === 'AddressOwner' && typeof o.AddressOwner === 'string') {
+    return o.AddressOwner
+  }
+  return null
+}
+
 /**
  * Parses a raw object's json field (from getObjects with include: { json: true })
  * into a DB row. Returns null if the object is malformed or missing required fields.
+ *
+ * ownerAddress is passed in separately — it comes from a second getObjects call
+ * on the NFT object itself (the registry wrapper object's owner is NOT the
+ * domain owner; the NFT object's owner is).
  *
  * Expected json shape (confirmed from live mainnet testing):
  * {
@@ -22,6 +47,7 @@ type DomainRow = Omit<SuinsDomain, 'id' | 'created_at'>
 export function parseDomainFromJson(
   objectId: string,
   json: Record<string, unknown> | null | undefined,
+  ownerAddress: string | null = null,
 ): DomainRow | null {
   try {
     if (!objectId || !json) return null
@@ -75,6 +101,7 @@ export function parseDomainFromJson(
       label_type: labelType,
       nft_id,
       target_address,
+      owner_address: ownerAddress,
       expiry_timestamp_ms: expiryMs,
       grace_period_end_ms: gracePeriodEndMs,
       domain_status: domainStatus,
