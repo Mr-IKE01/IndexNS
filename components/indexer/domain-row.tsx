@@ -5,7 +5,7 @@ import { Copy, Check, ExternalLink } from 'lucide-react'
 import { CountdownTimer } from './countdown-timer'
 import { formatExpiryDate, formatExpiryDateShort, formatTimeRemaining } from '@/lib/sui/time'
 import { GRACE_PERIOD_MS } from '@/lib/sui/constants'
-import type { SuinsDomain } from '@/types/domain'
+import type { SuinsDomain, LabelType } from '@/types/domain'
 
 const SUISCAN_BASE = 'https://suiscan.xyz/mainnet/object'
 
@@ -13,14 +13,33 @@ interface DomainRowProps {
   domain: SuinsDomain
 }
 
+const LABEL_TYPE_STYLES: Record<LabelType, string> = {
+  numeric: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  alpha:   'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
+  mixed:   'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  emoji:   'bg-pink-500/10 text-pink-400 border-pink-500/20',
+}
+
+const LABEL_TYPE_LABELS: Record<LabelType, string> = {
+  numeric: '123',
+  alpha:   'ABC',
+  mixed:   'A1B2',
+  emoji:   '😀',
+}
+
+function LabelTypeBadge({ type }: { type: LabelType }) {
+  return (
+    <span
+      className={`inline-flex items-center px-1.5 py-0.5 rounded border text-[10px] font-mono font-medium shrink-0 ${LABEL_TYPE_STYLES[type]}`}
+      title={`Label type: ${type}`}
+    >
+      {LABEL_TYPE_LABELS[type]}
+    </span>
+  )
+}
+
 // Draining urgency bar — shows how close domain is to expiry/grace-end
-// Bar represents last 30 days before the critical timestamp
-function UrgencyBar({
-  targetMs,
-}: {
-  targetMs: number
-  variant: 'expiry' | 'grace'
-}) {
+function UrgencyBar({ targetMs }: { targetMs: number; variant: 'expiry' | 'grace' }) {
   const remaining = targetMs - Date.now()
   const pct = Math.max(0, Math.min(100, (remaining / GRACE_PERIOD_MS) * 100))
 
@@ -49,7 +68,6 @@ function CopyButton({ value, label }: { value: string; label?: string }) {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {
-      // Fallback for older browsers
       const el = document.createElement('textarea')
       el.value = value
       document.body.appendChild(el)
@@ -75,10 +93,18 @@ function CopyButton({ value, label }: { value: string; label?: string }) {
   )
 }
 
+// Truncates a wallet address: 0x1234...abcd
+function truncateAddress(address: string): string {
+  if (address.length <= 12) return address
+  return `${address.slice(0, 6)}...${address.slice(-4)}`
+}
+
 export function DomainRow({ domain }: DomainRowProps) {
   const {
     name,
     nft_id,
+    owner_address,
+    label_type,
     expiry_timestamp_ms,
     grace_period_end_ms,
     domain_status,
@@ -86,12 +112,10 @@ export function DomainRow({ domain }: DomainRowProps) {
 
   const suiScanUrl = nft_id ? `${SUISCAN_BASE}/${nft_id}` : null
 
-  // Which timestamp to count down toward
   const countdownTarget =
     domain_status === 'grace' ? grace_period_end_ms : expiry_timestamp_ms
   const countdownVariant = domain_status === 'grace' ? 'grace' : 'expiry'
 
-  // The "primary" UTC timestamp to display
   const primaryTs =
     domain_status === 'grace'
       ? formatExpiryDate(grace_period_end_ms)
@@ -102,7 +126,6 @@ export function DomainRow({ domain }: DomainRowProps) {
       ? formatExpiryDateShort(grace_period_end_ms)
       : formatExpiryDateShort(expiry_timestamp_ms)
 
-  // Label for expired rows
   const droppedAgo =
     domain_status === 'expired'
       ? formatTimeRemaining(grace_period_end_ms)
@@ -113,22 +136,33 @@ export function DomainRow({ domain }: DomainRowProps) {
       {/* ── DESKTOP ROW (md and up) ────────────────────────────────────── */}
       <div className="hidden md:grid grid-cols-[1fr_160px_140px_220px] gap-4 items-center px-4 py-3 border-b border-zinc-800/60 hover:bg-zinc-900/50 transition-colors group">
 
-        {/* Col 1 — Name + actions */}
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="font-mono text-sm text-white font-medium truncate">
-            {name}
-          </span>
-          <CopyButton value={name} label="domain name" />
-          {suiScanUrl && (
-            <a
-              href={suiScanUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="View on SuiScan"
-              className="inline-flex items-center justify-center w-6 h-6 rounded text-zinc-600 hover:text-indigo-400 hover:bg-zinc-800 transition-colors shrink-0"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
+        {/* Col 1 — Name + type badge + owner + actions */}
+        <div className="flex flex-col gap-1 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-mono text-sm text-white font-medium truncate">
+              {name}
+            </span>
+            <LabelTypeBadge type={label_type} />
+            <CopyButton value={name} label="domain name" />
+            {suiScanUrl && (
+              
+                href={suiScanUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="View on SuiScan"
+                className="inline-flex items-center justify-center w-6 h-6 rounded text-zinc-600 hover:text-indigo-400 hover:bg-zinc-800 transition-colors shrink-0"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+          </div>
+          {owner_address && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-zinc-600 font-mono">
+                {truncateAddress(owner_address)}
+              </span>
+              <CopyButton value={owner_address} label="owner address" />
+            </div>
           )}
         </div>
 
@@ -175,14 +209,15 @@ export function DomainRow({ domain }: DomainRowProps) {
       {/* ── MOBILE CARD (below md) ─────────────────────────────────────── */}
       <div className="md:hidden mx-3 mb-2 bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 space-y-2.5">
 
-        {/* Top row — name + icons */}
+        {/* Top row — name + badge + icons */}
         <div className="flex items-center gap-2">
           <span className="font-mono text-sm text-white font-medium flex-1 truncate">
             {name}
           </span>
+          <LabelTypeBadge type={label_type} />
           <CopyButton value={name} label="domain name" />
           {suiScanUrl && (
-            <a
+            
               href={suiScanUrl}
               target="_blank"
               rel="noopener noreferrer"
@@ -193,6 +228,17 @@ export function DomainRow({ domain }: DomainRowProps) {
             </a>
           )}
         </div>
+
+        {/* Owner address */}
+        {owner_address && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-zinc-600">Owner:</span>
+            <span className="text-xs text-zinc-500 font-mono">
+              {truncateAddress(owner_address)}
+            </span>
+            <CopyButton value={owner_address} label="owner address" />
+          </div>
+        )}
 
         {/* Urgency bar */}
         {domain_status !== 'expired' && (
@@ -232,4 +278,4 @@ export function DomainRow({ domain }: DomainRowProps) {
       </div>
     </>
   )
-                }
+}
