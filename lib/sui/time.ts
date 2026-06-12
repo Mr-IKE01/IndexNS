@@ -14,8 +14,6 @@ export function parseExpiryMs(raw: string | number | bigint | null | undefined):
   let ms: number
 
   if (typeof raw === 'bigint') {
-    // bigint → number is safe here because JS max safe integer (2^53-1) covers
-    // unix ms timestamps well past year 285,000. No SuiNS domain expires then.
     ms = Number(raw)
   } else if (typeof raw === 'string') {
     ms = Number(raw)
@@ -65,19 +63,50 @@ export function computeDomainStatus(
 }
 
 /**
- * Formats a Unix ms timestamp for display (e.g. "14 Jun 2025, 10:32 UTC").
+ * Pads a number to 2 digits with a leading zero.
+ */
+function pad2(n: number): string {
+  return n.toString().padStart(2, '0')
+}
+
+/**
+ * Formats a Unix ms timestamp in the exact, copyable, unambiguous format:
+ * "2026-06-30 21:21:06 UTC"
+ *
+ * This is the PRIMARY format — used anywhere the exact timestamp matters
+ * (sniping, scheduling, verification against on-chain data).
  * Safe to call with any value — returns "—" if the timestamp is invalid.
  */
 export function formatExpiryDate(ms: number | null | undefined): string {
   if (ms == null || !Number.isFinite(ms) || ms <= 0) return '—'
-  return new Date(ms).toLocaleString('en-GB', {
-    day: '2-digit',
+
+  const d = new Date(ms)
+  const year = d.getUTCFullYear()
+  const month = pad2(d.getUTCMonth() + 1)
+  const day = pad2(d.getUTCDate())
+  const hours = pad2(d.getUTCHours())
+  const minutes = pad2(d.getUTCMinutes())
+  const seconds = pad2(d.getUTCSeconds())
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds} UTC`
+}
+
+/**
+ * Formats a Unix ms timestamp as a short, human-readable date:
+ * "30 Jun 2026"
+ *
+ * This is the SECONDARY format — used as an at-a-glance label next to
+ * the primary copyable timestamp. Never used for anything precise.
+ * Safe to call with any value — returns "—" if the timestamp is invalid.
+ */
+export function formatExpiryDateShort(ms: number | null | undefined): string {
+  if (ms == null || !Number.isFinite(ms) || ms <= 0) return '—'
+
+  return new Date(ms).toLocaleDateString('en-GB', {
+    day: 'numeric',
     month: 'short',
     year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
     timeZone: 'UTC',
-    timeZoneName: 'short',
   })
 }
 
