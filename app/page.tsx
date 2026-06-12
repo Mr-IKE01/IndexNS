@@ -37,7 +37,7 @@ export default async function Home() {
 
   return (
     <IndexerPage
-      initialDomains={(initialDomains ?? []) as SuinsDomain[]}
+      initialDomains={(initialDomains ?? []) as unknown as SuinsDomain[]}
       initialTotal={initialTotal ?? 0}
       syncState={syncState as Pick<SyncState, 'bootstrap_complete' | 'total_indexed' | 'last_synced_at'> | null}
     />
