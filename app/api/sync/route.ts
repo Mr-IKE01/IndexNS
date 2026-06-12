@@ -22,7 +22,7 @@ const DomainBcs = bcs.struct('Domain', { labels: bcs.vector(bcs.string()) })
 function getGrpcClient() {
   return new SuiGrpcClient({
     network: 'mainnet',
-    baseUrl: 'https://sui-mainnet-rpc.mystenlabs.com',
+    baseUrl: 'https://sui-mainnet-grpc-web.blockvision.org',
   })
 }
 
