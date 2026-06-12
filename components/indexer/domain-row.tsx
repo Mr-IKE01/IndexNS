@@ -145,7 +145,7 @@ export function DomainRow({ domain }: DomainRowProps) {
             <LabelTypeBadge type={label_type} />
             <CopyButton value={name} label="domain name" />
             {suiScanUrl && (
-              
+              <a
                 href={suiScanUrl}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -217,7 +217,7 @@ export function DomainRow({ domain }: DomainRowProps) {
           <LabelTypeBadge type={label_type} />
           <CopyButton value={name} label="domain name" />
           {suiScanUrl && (
-            
+            <a
               href={suiScanUrl}
               target="_blank"
               rel="noopener noreferrer"
