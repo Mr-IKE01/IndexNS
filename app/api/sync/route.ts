@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { SuiGrpcClient } from '@mysten/sui/grpc'
+import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport'
 import { SuiGraphQLClient } from '@mysten/sui/graphql'
 import { bcs } from '@mysten/bcs'
 import { createServerClient } from '@/lib/supabase/server'
@@ -20,11 +21,11 @@ export const maxDuration = 60
 const DomainBcs = bcs.struct('Domain', { labels: bcs.vector(bcs.string()) })
 
 function getGrpcClient() {
-  return new SuiGrpcClient({
-    network: 'mainnet',
+  const transport = new GrpcWebFetchTransport({
     baseUrl: process.env.SUI_GRPC_URL ?? 'https://sui-mainnet-grpc-web.blockvision.org',
     meta: { 'x-api-key': process.env.SUI_GRPC_API_KEY ?? '' },
   })
+  return new SuiGrpcClient({ network: 'mainnet', transport })
 }
 
 function getGraphQLClient() {
