@@ -22,7 +22,8 @@ const DomainBcs = bcs.struct('Domain', { labels: bcs.vector(bcs.string()) })
 function getGrpcClient() {
   return new SuiGrpcClient({
     network: 'mainnet',
-    baseUrl: 'fullnode.mainnet.sui.io:443',
+    baseUrl: process.env.SUI_GRPC_URL ?? 'https://sui-mainnet-grpc-web.blockvision.org',
+    meta: { 'x-api-key': process.env.SUI_GRPC_API_KEY ?? '' },
   })
 }
 
