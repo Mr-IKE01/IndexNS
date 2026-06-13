@@ -22,8 +22,7 @@ const DomainBcs = bcs.struct('Domain', { labels: bcs.vector(bcs.string()) })
 
 function getGrpcClient() {
   const transport = new GrpcWebFetchTransport({
-    baseUrl: process.env.SUI_GRPC_URL ?? 'https://sui-mainnet-grpc-web.blockvision.org',
-    meta: { 'x-api-key': process.env.SUI_GRPC_API_KEY ?? '' },
+    baseUrl: 'https://sui-mainnet-rpc.mystenlabs.com',
   })
   return new SuiGrpcClient({ network: 'mainnet', transport })
 }
