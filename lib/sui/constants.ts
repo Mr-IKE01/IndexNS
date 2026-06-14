@@ -27,7 +27,7 @@ export const EVENTS = {
 } as const
 
 // Sui mainnet GraphQL endpoint
-export const SUI_GRAPHQL_URL = 'https://sui-mainnet.mystenlabs.com/graphql'
+export const SUI_GRAPHQL_URL = 'https://graphql-beta.mainnet.sui.io'
 
 // Bootstrap: items fetched per listDynamicFields call
 // Increased from 50 to 100 — concurrent prefetch pipeline absorbs the extra cost
