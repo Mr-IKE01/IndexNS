@@ -24,7 +24,7 @@ function getGraphQLClient() {
 
 const BOOTSTRAP_QUERY = `
   query GetDynamicFields($parentId: SuiAddress!, $first: Int!, $after: String) {
-    object(address: $parentId) {
+    address(address: $parentId) {
       dynamicFields(first: $first, after: $after) {
         pageInfo {
           hasNextPage
@@ -136,7 +136,7 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
     if (Date.now() - startTime > 50_000) break
 
     type BootstrapResult = {
-      object: {
+      address: {
         dynamicFields: {
           pageInfo: { hasNextPage: boolean; endCursor: string | null }
           nodes: DFNode[]
@@ -161,8 +161,8 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
       break
     }
 
-    const fields = result.data?.object?.dynamicFields
-    console.log('[bootstrap] full result:', JSON.stringify(result.data), JSON.stringify(result.errors ?? 'no errors'))
+    const fields = result.data?.address?.dynamicFields
+    console.log('[bootstrap] address:', JSON.stringify(result.data?.address ? 'found' : 'null'), '| fields:', fields?.nodes?.length ?? 'null', '| hasNextPage:', fields?.pageInfo?.hasNextPage)
     if (!fields?.nodes?.length) { bootstrapComplete = true; break }
 
     const rows = fields.nodes.map((node) => {
