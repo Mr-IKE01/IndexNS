@@ -31,9 +31,9 @@ export const SUI_GRAPHQL_URL = 'https://graphql.mainnet.sui.io/graphql'
 
 // Bootstrap: items fetched per listDynamicFields call
 // Increased from 50 to 100 — concurrent prefetch pipeline absorbs the extra cost
-export const DYNAMIC_FIELDS_PAGE_SIZE = 100
+export const DYNAMIC_FIELDS_PAGE_SIZE = 50
 
 // Bootstrap: max pages processed per single /api/sync invocation
 // 15 pages × 100 domains × ~3.5s per page (with prefetch pipeline) ≈ 52s,
 // fits inside Vercel's 60s maxDuration with buffer
-export const MAX_PAGES_PER_INVOCATION = 15
+export const MAX_PAGES_PER_INVOCATION = 20
