@@ -199,8 +199,9 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
     }
 
     const objects = result.data?.objects
-    console.log('[bootstrap] nodes:', objects?.nodes?.length ?? 'null', '| hasNextPage:', objects?.pageInfo?.hasNextPage)
-
+    console.log('[bootstrap] raw result.data keys:', Object.keys(result.data ?? {}))
+    console.log('[bootstrap] objects:', JSON.stringify(objects))
+    console.log('[bootstrap] errors:', JSON.stringify((result as Record<string, unknown>).errors))
     if (!objects?.nodes?.length) { bootstrapComplete = true; break }
 
     const rows = objects.nodes.map((node) => {
