@@ -34,11 +34,13 @@ const BOOTSTRAP_QUERY = `
       }
       nodes {
         address
-        owner {
-          __typename
-          ... on AddressOwner { owner { address } }
+        asMoveObject {
+          owner {
+            __typename
+            ... on AddressOwner { address { address } }
+          }
+          contents { json }
         }
-        contents { json }
       }
     }
   }
@@ -172,11 +174,13 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
         pageInfo: { hasNextPage: boolean; endCursor: string | null }
         nodes: Array<{
           address: string
-          owner: {
-            __typename: string
-            owner?: { address: string }
+          asMoveObject: {
+            owner: {
+              __typename: string
+              address?: { address: string }
+            } | null
+            contents: { json: Record<string, unknown> | null } | null
           } | null
-          contents: { json: Record<string, unknown> | null } | null
         }>
       }
     }
@@ -205,12 +209,13 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
     if (!objects?.nodes?.length) { bootstrapComplete = true; break }
 
     const rows = objects.nodes.map((node) => {
+      const mo = node.asMoveObject
       const ownerAddress =
-        node.owner?.__typename === 'AddressOwner'
-          ? node.owner.owner?.address ?? null
+        mo?.owner?.__typename === 'AddressOwner'
+          ? mo.owner.address?.address ?? null
           : null
 
-      return parseNftJson(node.address, node.contents?.json, ownerAddress)
+      return parseNftJson(node.address, mo?.contents?.json, ownerAddress)
     }).filter((r): r is NonNullable<typeof r> => r !== null)
 
     if (rows.length > 0) {
