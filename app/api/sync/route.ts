@@ -162,7 +162,7 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
     }
 
     const fields = result.data?.object?.dynamicFields
-    console.log('[bootstrap] object:', JSON.stringify(result.data?.object ? 'found' : 'null'), '| fields:', fields?.nodes?.length ?? 'null', '| hasNextPage:', fields?.pageInfo?.hasNextPage)
+    console.log('[bootstrap] full result:', JSON.stringify(result.data), JSON.stringify(result.errors ?? 'no errors'))
     if (!fields?.nodes?.length) { bootstrapComplete = true; break }
 
     const rows = fields.nodes.map((node) => {
