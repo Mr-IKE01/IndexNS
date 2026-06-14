@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { SuiGrpcClient } from '@mysten/sui/grpc'
-import { GrpcWebFetchTransport } from '@protobuf-ts/grpcweb-transport'
 import { SuiGraphQLClient } from '@mysten/sui/graphql'
 import { bcs } from '@mysten/bcs'
 import { createServerClient } from '@/lib/supabase/server'
-import { parseDomainFromJson, nameToLabels, extractOwnerAddress } from '@/lib/sui/parser'
+import { parseDomainFromJson, nameToLabels } from '@/lib/sui/parser'
 import { withRetry } from '@/lib/sui/retry'
 import {
   SUINS_OBJECTS,
@@ -20,15 +18,89 @@ export const maxDuration = 60
 
 const DomainBcs = bcs.struct('Domain', { labels: bcs.vector(bcs.string()) })
 
-function getGrpcClient() {
-  const transport = new GrpcWebFetchTransport({
-    baseUrl: 'https://sui-mainnet-rpc.mystenlabs.com',
-  })
-  return new SuiGrpcClient({ network: 'mainnet', transport })
-}
-
 function getGraphQLClient() {
   return new SuiGraphQLClient({ url: SUI_GRAPHQL_URL, network: 'mainnet' })
+}
+
+const BOOTSTRAP_QUERY = `
+  query GetDynamicFields($parentId: SuiAddress!, $first: Int!, $after: String) {
+    object(address: $parentId) {
+      dynamicFields(first: $first, after: $after) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        nodes {
+          address
+          contents { json }
+          value {
+            __typename
+            ... on MoveValue { json }
+            ... on MoveObject {
+              contents { json }
+              owner {
+                __typename
+                ... on AddressOwner { owner { address } }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`
+
+const SINGLE_DOMAIN_QUERY = `
+  query GetDomainByName($parentId: SuiAddress!, $nameType: String!, $nameBcs: Base64!) {
+    object(address: $parentId) {
+      dynamicField(name: { type: $nameType, bcs: $nameBcs }) {
+        address
+        value {
+          __typename
+          ... on MoveValue { json }
+          ... on MoveObject {
+            contents { json }
+            owner {
+              __typename
+              ... on AddressOwner { owner { address } }
+            }
+          }
+        }
+      }
+    }
+  }
+`
+
+type DFValueOwner = {
+  __typename?: string
+  owner?: { address?: string }
+} | null
+
+type DFValue = {
+  __typename: string
+  json?: Record<string, unknown> | null
+  contents?: { json: Record<string, unknown> | null } | null
+  owner?: DFValueOwner
+} | null
+
+type DFNode = {
+  address: string
+  contents: { json: Record<string, unknown> | null } | null
+  value: DFValue
+}
+
+function extractOwnerFromValue(value: DFValue): string | null {
+  if (value?.__typename === 'MoveObject') {
+    const o = value.owner as DFValueOwner
+    if (o?.__typename === 'AddressOwner') return o.owner?.address ?? null
+  }
+  return null
+}
+
+function extractValueJson(value: DFValue): Record<string, unknown> | null {
+  if (!value) return null
+  if (value.__typename === 'MoveObject') return value.contents?.json ?? null
+  return value.json ?? null
 }
 
 export async function POST(request: NextRequest) {
@@ -40,10 +112,7 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServerClient()
   const { data: state, error: stateError } = await supabase
-    .from('sync_state')
-    .select('*')
-    .eq('id', 1)
-    .single()
+    .from('sync_state').select('*').eq('id', 1).single()
 
   if (stateError || !state) {
     return NextResponse.json({ error: 'Failed to load sync state' }, { status: 500 })
@@ -54,45 +123,8 @@ export async function POST(request: NextRequest) {
   return runIncremental(syncState)
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Fetch owner addresses for a batch of NFT IDs.
-// Returns a Map<nftId, ownerAddress | null>. NFTs that fail to fetch are omitted
-// (treated as null when looked up).
-// ─────────────────────────────────────────────────────────────────────────────
-async function fetchOwnerMap(
-  sui: ReturnType<typeof getGrpcClient>,
-  nftIds: string[],
-): Promise<Map<string, string | null>> {
-  const map = new Map<string, string | null>()
-  if (nftIds.length === 0) return map
-
-  try {
-    const result = await withRetry(() =>
-      sui.getObjects({ objectIds: nftIds, include: { json: false } })
-    )
-
-    result.objects.forEach((obj, i) => {
-      if (obj instanceof Error) return
-      map.set(nftIds[i], extractOwnerAddress(obj.owner))
-    })
-  } catch (err) {
-    console.error('fetchOwnerMap failed:', err)
-  }
-
-  return map
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// BOOTSTRAP: Paginate registry dynamic fields with a prefetch pipeline.
-//
-// For each page N, we run THREE things:
-//   1. Fetch content for page N's wrapper objects (the slow part)
-//   2. In parallel, prefetch the dynamic-field LIST for page N+1 (hides latency)
-//   3. After (1) completes, fetch owner addresses for page N's NFTs (sequential —
-//      needs nft_ids extracted from page N's content first)
-// ─────────────────────────────────────────────────────────────────────────────
 async function runBootstrap(state: SyncState): Promise<NextResponse> {
-  const sui = getGrpcClient()
+  const graphql = getGraphQLClient()
   const supabase = createServerClient()
 
   const startTime = Date.now()
@@ -100,119 +132,71 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
   let totalThisCall = 0
   let bootstrapComplete = false
 
-  // Prefetched page from the previous iteration (null on first iteration)
-  let prefetchedPage: Awaited<ReturnType<typeof sui.listDynamicFields>> | null = null
-
   for (let page = 0; page < MAX_PAGES_PER_INVOCATION; page++) {
     if (Date.now() - startTime > 50_000) break
 
-    // ── Step 1: Get current page's field list (use prefetch if available) ──
-    let fieldPage: Awaited<ReturnType<typeof sui.listDynamicFields>>
-    if (prefetchedPage) {
-      fieldPage = prefetchedPage
-      prefetchedPage = null
-    } else {
-      try {
-        fieldPage = await withRetry(() =>
-          sui.listDynamicFields({
-            parentId: SUINS_OBJECTS.REGISTRY_TABLE,
-            cursor: cursor ?? undefined,
-            limit: DYNAMIC_FIELDS_PAGE_SIZE,
-          })
-        )
-      } catch (err) {
-        console.error('listDynamicFields failed:', err)
-        break
-      }
+    type BootstrapResult = {
+      object: {
+        dynamicFields: {
+          pageInfo: { hasNextPage: boolean; endCursor: string | null }
+          nodes: DFNode[]
+        }
+      } | null
     }
 
-    if (!fieldPage.dynamicFields.length) {
-      bootstrapComplete = true
+    let result: { data?: BootstrapResult }
+    try {
+      result = await withRetry(() =>
+        graphql.query<BootstrapResult>({
+          query: BOOTSTRAP_QUERY,
+          variables: {
+            parentId: SUINS_OBJECTS.REGISTRY_TABLE,
+            first: DYNAMIC_FIELDS_PAGE_SIZE,
+            after: cursor ?? undefined,
+          },
+        })
+      )
+    } catch (err) {
+      console.error('Bootstrap GraphQL query failed:', err)
       break
     }
 
-    const fieldIds = fieldPage.dynamicFields.map((f) => f.fieldId)
-    const nextCursor = fieldPage.cursor ?? null
-    const hasNextPage = fieldPage.hasNextPage
+    const fields = result.data?.object?.dynamicFields
+    if (!fields?.nodes?.length) { bootstrapComplete = true; break }
 
-    // ── Step 2: Fetch content for THIS page, prefetch NEXT page's field list,
-    //            both in parallel ─────────────────────────────────────────
-    const [objectsResult, nextFieldPage] = await Promise.all([
-      withRetry(() =>
-        sui.getObjects({ objectIds: fieldIds, include: { json: true } })
-      ).catch((err) => {
-        console.error('getObjects (content) failed:', err)
-        return null
-      }),
-      hasNextPage
-        ? withRetry(() =>
-            sui.listDynamicFields({
-              parentId: SUINS_OBJECTS.REGISTRY_TABLE,
-              cursor: nextCursor ?? undefined,
-              limit: DYNAMIC_FIELDS_PAGE_SIZE,
-            })
-          ).catch((err) => {
-            console.error('prefetch listDynamicFields failed:', err)
-            return null
-          })
-        : Promise.resolve(null),
-    ])
+    const rows = fields.nodes.map((node) => {
+      const contentJson = node.contents?.json
+      if (!contentJson) return null
 
-    if (!objectsResult) break
+      const ownerAddress = extractOwnerFromValue(node.value)
+      const valueJson = extractValueJson(node.value)
 
-    // Stash the prefetched next page for the following iteration
-    prefetchedPage = nextFieldPage
+      const merged: Record<string, unknown> = {
+        name: contentJson,
+        value: { fields: valueJson },
+      }
 
-    // ── Step 3: Parse content (without owner yet) ───────────────────────
-    const parsed = objectsResult.objects.map((obj, i) => {
-      if (obj instanceof Error) return null
-      const json = (obj.json as unknown) as Record<string, unknown> | null | undefined
-      return { fieldId: fieldIds[i], row: parseDomainFromJson(fieldIds[i], json) }
-    })
+      return parseDomainFromJson(node.address, merged, ownerAddress)
+    }).filter((r): r is NonNullable<typeof r> => r !== null)
 
-    // ── Step 4: Collect nft_ids and fetch owner addresses ────────────────
-    const nftIds = parsed
-      .map((p) => p?.row?.nft_id)
-      .filter((id): id is string => typeof id === 'string')
-
-    const ownerMap = await fetchOwnerMap(sui, nftIds)
-
-    // ── Step 5: Attach owner_address, build final rows ───────────────────
-    const rows = parsed
-      .filter((p): p is NonNullable<typeof p> => p !== null && p.row !== null)
-      .map((p) => {
-        const row = p.row!
-        const owner = row.nft_id ? ownerMap.get(row.nft_id) ?? null : null
-        return { ...row, owner_address: owner }
-      })
-
-    // ── Step 6: Upsert ────────────────────────────────────────────────────
     if (rows.length > 0) {
       const { error: upsertError } = await supabase
         .from('suins_domains')
         .upsert(rows, { onConflict: 'object_id' })
-
       if (upsertError) console.error('Upsert error:', upsertError.message)
     }
 
     totalThisCall += rows.length
-    cursor = nextCursor
-
-    if (!hasNextPage) {
-      bootstrapComplete = true
-      break
-    }
+    cursor = fields.pageInfo.endCursor ?? null
+    if (!fields.pageInfo.hasNextPage) { bootstrapComplete = true; break }
   }
 
-  await supabase
-    .from('sync_state')
-    .update({
-      bootstrap_cursor: bootstrapComplete ? null : cursor,
-      bootstrap_complete: bootstrapComplete,
-      total_indexed: (state.total_indexed ?? 0) + totalThisCall,
-      last_synced_at: new Date().toISOString(),
-    })
-    .eq('id', 1)
+  await supabase.from('sync_state').update({
+    bootstrap_cursor: bootstrapComplete ? null : cursor,
+    bootstrap_complete: bootstrapComplete,
+    total_indexed: (state.total_indexed ?? 0) + totalThisCall,
+    last_synced_at: new Date().toISOString(),
+  }).eq('id', 1)
 
   return NextResponse.json({
     mode: 'bootstrap',
@@ -222,9 +206,6 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
   })
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// INCREMENTAL: Query new events via GraphQL + sweep status changes
-// ─────────────────────────────────────────────────────────────────────────────
 async function runIncremental(state: SyncState): Promise<NextResponse> {
   const graphql = getGraphQLClient()
   const supabase = createServerClient()
@@ -273,7 +254,7 @@ async function runIncremental(state: SyncState): Promise<NextResponse> {
         for (const event of result.data.events.nodes) {
           const name = event.contents?.json?.name
           if (typeof name !== 'string') continue
-          const row = await fetchDomainByName(name)
+          const row = await fetchDomainByName(graphql, name)
           if (row) {
             await supabase.from('suins_domains').upsert(row, { onConflict: 'name' })
             totalProcessed++
@@ -290,65 +271,62 @@ async function runIncremental(state: SyncState): Promise<NextResponse> {
   }
 
   const now = Date.now()
-  await supabase
-    .from('suins_domains')
+  await supabase.from('suins_domains')
     .update({ domain_status: 'grace', updated_at: new Date().toISOString() })
-    .eq('domain_status', 'active')
-    .lt('expiry_timestamp_ms', now)
+    .eq('domain_status', 'active').lt('expiry_timestamp_ms', now)
 
-  await supabase
-    .from('suins_domains')
+  await supabase.from('suins_domains')
     .update({ domain_status: 'expired', updated_at: new Date().toISOString() })
-    .eq('domain_status', 'grace')
-    .lt('grace_period_end_ms', now)
+    .eq('domain_status', 'grace').lt('grace_period_end_ms', now)
 
-  await supabase
-    .from('sync_state')
-    .update({ last_synced_at: new Date().toISOString() })
-    .eq('id', 1)
+  await supabase.from('sync_state')
+    .update({ last_synced_at: new Date().toISOString() }).eq('id', 1)
 
   return NextResponse.json({ mode: 'incremental', processed: totalProcessed })
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPER: Fetch a single domain (+ owner) from registry by name
-// ─────────────────────────────────────────────────────────────────────────────
-async function fetchDomainByName(domainName: string) {
-  const sui = getGrpcClient()
+async function fetchDomainByName(graphql: SuiGraphQLClient, domainName: string) {
   try {
-    const labels = nameToLabels(domainName)
+    const labels = nameToLabels(domainName) // ["sui", "example"]
     const nameBcs = DomainBcs.serialize({ labels }).toBytes()
+    const nameBcsBase64 = Buffer.from(nameBcs).toString('base64')
+
+    type SingleResult = {
+      object: {
+        dynamicField: {
+          address: string
+          value: DFValue
+        } | null
+      } | null
+    }
 
     const result = await withRetry(() =>
-      sui.getDynamicField({
-        parentId: SUINS_OBJECTS.REGISTRY_TABLE,
-        name: { type: DOMAIN_FIELD_TYPE, bcs: nameBcs },
+      graphql.query<SingleResult>({
+        query: SINGLE_DOMAIN_QUERY,
+        variables: {
+          parentId: SUINS_OBJECTS.REGISTRY_TABLE,
+          nameType: DOMAIN_FIELD_TYPE,
+          nameBcs: nameBcsBase64,
+        },
       })
     )
 
-    const field = result.dynamicField
-    if (!field?.fieldId) return null
+    const field = result.data?.object?.dynamicField
+    if (!field) return null
 
-    const objResult = await withRetry(() =>
-      sui.getObjects({ objectIds: [field.fieldId], include: { json: true } })
-    )
+    const ownerAddress = extractOwnerFromValue(field.value)
+    const valueJson = extractValueJson(field.value)
 
-    const obj = objResult.objects[0]
-    if (!obj || obj instanceof Error) return null
-
-    const json = (obj.json as unknown) as Record<string, unknown> | null | undefined
-    const parsed = parseDomainFromJson(field.fieldId, json)
-    if (!parsed) return null
-
-    // Fetch owner if we have an nft_id
-    if (parsed.nft_id) {
-      const ownerMap = await fetchOwnerMap(sui, [parsed.nft_id])
-      parsed.owner_address = ownerMap.get(parsed.nft_id) ?? null
+    const merged: Record<string, unknown> = {
+      name: { fields: { labels } },
+      value: { fields: valueJson },
     }
 
-    return parsed
-  } catch {
+    return parseDomainFromJson(field.address, merged, ownerAddress)
+  } catch (err) {
+    console.error('fetchDomainByName failed:', err)
     return null
   }
 }
+
 export const GET = POST
