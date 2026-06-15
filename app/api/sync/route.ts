@@ -26,17 +26,17 @@ function getGraphQLClient() {
   return new SuiGraphQLClient({ url: SUI_GRAPHQL_URL, network: 'mainnet' })
 }
 
-const GET_CORE_VERSION_QUERY = `
-  query GetCoreVersion($coreId: SuiAddress!) {
-    object(address: $coreId) {
-      version
+const GET_LATEST_CHECKPOINT_QUERY = `
+  query GetLatestCheckpoint {
+    checkpoint {
+      sequenceNumber
     }
   }
 `
 
 const BOOTSTRAP_QUERY = `
-  query GetDynamicFields($registryId: SuiAddress!, $rootVersion: UInt53!, $first: Int!, $after: String) {
-    address(address: $registryId, rootVersion: $rootVersion) {
+  query GetDynamicFields($registryId: SuiAddress!, $checkpoint: UInt53!, $first: Int!, $after: String) {
+    address(address: $registryId, checkpoint: $checkpoint) {
       dynamicFields(first: $first, after: $after) {
         pageInfo {
           hasNextPage
@@ -184,23 +184,23 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
 
   // Step 1: Get the current version of the SuiNS core object
   // The registry table is wrapped inside it, so we need this as rootVersion
-  type CoreVersionResult = { object: { version: number } | null }
-  let coreVersion: number
+  type CheckpointResult = { checkpoint: { sequenceNumber: number } | null }
+  let checkpoint: number
 
   try {
-    const versionResult = await withRetry(() =>
-      graphql.query<CoreVersionResult>({
-        query: GET_CORE_VERSION_QUERY,
-        variables: { coreId: SUINS_OBJECTS.CORE },
+    const checkpointResult = await withRetry(() =>
+      graphql.query<CheckpointResult>({
+        query: GET_LATEST_CHECKPOINT_QUERY,
+        variables: {},
       })
     )
-    const v = versionResult.data?.object?.version
-    if (!v) throw new Error('Could not fetch SuiNS core object version')
-    coreVersion = v
-    console.log('[bootstrap] core version:', coreVersion)
+    const c = checkpointResult.data?.checkpoint?.sequenceNumber
+    if (!c) throw new Error('Could not fetch latest checkpoint')
+    checkpoint = c
+    console.log('[bootstrap] checkpoint:', checkpoint)
   } catch (err) {
-    console.error('[bootstrap] failed to get core version:', err)
-    return NextResponse.json({ error: 'Failed to get core version' }, { status: 500 })
+    console.error('[bootstrap] failed to get checkpoint:', err)
+    return NextResponse.json({ error: 'Failed to get checkpoint' }, { status: 500 })
   }
 
   for (let page = 0; page < MAX_PAGES_PER_INVOCATION; page++) {
@@ -236,7 +236,7 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
           query: BOOTSTRAP_QUERY,
           variables: {
             registryId: SUINS_OBJECTS.REGISTRY_TABLE,
-            rootVersion: coreVersion,
+            checkpoint: checkpoint,
             first: DYNAMIC_FIELDS_PAGE_SIZE,
             after: cursor ?? undefined,
           },
