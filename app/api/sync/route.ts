@@ -6,8 +6,8 @@ import { parseDomainFromJson, nameToLabels } from '@/lib/sui/parser'
 import { parseExpiryMs, computeGracePeriodEnd, computeDomainStatus } from '@/lib/sui/time'
 import { withRetry } from '@/lib/sui/retry'
 import {
-  SUINS_PACKAGES,
   SUINS_OBJECTS,
+  SUINS_PACKAGES,
   EVENTS,
   SUI_GRAPHQL_URL,
   DYNAMIC_FIELDS_PAGE_SIZE,
@@ -18,9 +18,6 @@ import type { SyncState, LabelType, DomainStatus } from '@/types/domain'
 export const maxDuration = 60
 
 const DomainBcs = bcs.struct('Domain', { labels: bcs.vector(bcs.string()) })
-
-const SUINS_REGISTRATION_TYPE =
-  `${SUINS_PACKAGES.REGISTRATION}::suins_registration::SuinsRegistration`
 
 function getGraphQLClient() {
   return new SuiGraphQLClient({ url: SUI_GRAPHQL_URL, network: 'mainnet' })
@@ -36,45 +33,26 @@ const GET_LATEST_CHECKPOINT_QUERY = `
 
 const BOOTSTRAP_QUERY = `
   query GetDynamicFields($registryId: SuiAddress!, $checkpoint: UInt53!, $first: Int!, $after: String) {
-    address(address: $registryId, checkpoint: $checkpoint) {
-      dynamicFields(first: $first, after: $after) {
-        pageInfo {
-          hasNextPage
-          endCursor
-        }
-        nodes {
-          address
-          value {
-            __typename
-            ... on MoveValue { json }
-            ... on MoveObject {
-              contents { json }
-              owner {
-                __typename
-                ... on AddressOwner { address { address } }
-              }
-            }
+    address(address: $registryId) {
+      addressAt(checkpoint: $checkpoint) {
+        dynamicFields(first: $first, after: $after) {
+          pageInfo {
+            hasNextPage
+            endCursor
           }
-          contents { json }
-        }
-      }
-    }
-  }
-`
-
-const SINGLE_DOMAIN_QUERY = `
-  query GetDomainByName($parentId: SuiAddress!, $nameType: String!, $nameBcs: Base64!) {
-    object(address: $parentId) {
-      dynamicField(name: { type: $nameType, bcs: $nameBcs }) {
-        address
-        value {
-          __typename
-          ... on MoveValue { json }
-          ... on MoveObject {
+          nodes {
+            address
             contents { json }
-            owner {
+            value {
               __typename
-              ... on AddressOwner { owner { address } }
+              ... on MoveValue { json }
+              ... on MoveObject {
+                contents { json }
+                owner {
+                  __typename
+                  ... on AddressOwner { address { address } }
+                }
+              }
             }
           }
         }
@@ -87,13 +65,13 @@ type DFValue = {
   __typename: string
   json?: Record<string, unknown> | null
   contents?: { json: Record<string, unknown> | null } | null
-  owner?: { __typename?: string; owner?: { address?: string } } | null
+  owner?: { __typename?: string; address?: { address?: string } } | null
 } | null
 
 function extractOwnerFromValue(value: DFValue): string | null {
   if (value?.__typename === 'MoveObject') {
     const o = value.owner
-    if (o?.__typename === 'AddressOwner') return o.owner?.address ?? null
+    if (o?.__typename === 'AddressOwner') return o.address?.address ?? null
   }
   return null
 }
@@ -102,55 +80,6 @@ function extractValueJson(value: DFValue): Record<string, unknown> | null {
   if (!value) return null
   if (value.__typename === 'MoveObject') return value.contents?.json ?? null
   return value.json ?? null
-}
-
-function parseNftJson(
-  nftId: string,
-  json: Record<string, unknown> | null | undefined,
-  ownerAddress: string | null,
-): Record<string, unknown> | null {
-  try {
-    if (!nftId || !json) return null
-
-    const domainField = json.domain as { fields?: { labels?: unknown } } | undefined
-    const labels = domainField?.fields?.labels
-
-    if (!Array.isArray(labels) || labels.length < 2) return null
-    if (!labels.every((l): l is string => typeof l === 'string')) return null
-
-    const name = [...labels].reverse().join('.')
-    const label = labels[labels.length - 1].toLowerCase()
-    const labelLength = label.length
-    if (labelLength < 1) return null
-
-    const expiryRaw = json.expiration_timestamp_ms
-    const expiryMs = parseExpiryMs(expiryRaw as string)
-    const gracePeriodEndMs = computeGracePeriodEnd(expiryMs)
-    const domainStatus: DomainStatus = computeDomainStatus(expiryMs, gracePeriodEndMs)
-
-    const labelType: LabelType =
-      /^\d+$/.test(label) ? 'numeric' :
-      /^[a-z]+$/.test(label) ? 'alpha' :
-      /\p{Emoji_Presentation}/u.test(label) ? 'emoji' :
-      'mixed'
-
-    return {
-      object_id: nftId,
-      name,
-      label,
-      label_length: labelLength,
-      label_type: labelType,
-      nft_id: nftId,
-      target_address: null,
-      owner_address: ownerAddress,
-      expiry_timestamp_ms: expiryMs,
-      grace_period_end_ms: gracePeriodEndMs,
-      domain_status: domainStatus,
-      updated_at: new Date().toISOString(),
-    }
-  } catch {
-    return null
-  }
 }
 
 export async function POST(request: NextRequest) {
@@ -182,8 +111,6 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
   let totalThisCall = 0
   let bootstrapComplete = false
 
-  // Step 1: Get the current version of the SuiNS core object
-  // The registry table is wrapped inside it, so we need this as rootVersion
   type CheckpointResult = { checkpoint: { sequenceNumber: number } | null }
   let checkpoint: number
 
@@ -209,23 +136,17 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
     type DFNode = {
       address: string
       contents: { json: Record<string, unknown> | null } | null
-      value: {
-        __typename: string
-        json?: Record<string, unknown> | null
-        contents?: { json: Record<string, unknown> | null } | null
-        owner?: {
-          __typename: string
-          address?: { address: string }
-        } | null
-      } | null
+      value: DFValue
     }
 
     type BootstrapResult = {
       address: {
-        dynamicFields: {
-          pageInfo: { hasNextPage: boolean; endCursor: string | null }
-          nodes: DFNode[]
-        }
+        addressAt: {
+          dynamicFields: {
+            pageInfo: { hasNextPage: boolean; endCursor: string | null }
+            nodes: DFNode[]
+          }
+        } | null
       } | null
     }
 
@@ -247,28 +168,17 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
       break
     }
 
-    const fields = result.data?.address?.dynamicFields
-    console.log('[bootstrap] nodes:', fields?.nodes?.length ?? 'null', '| hasNextPage:', fields?.pageInfo?.hasNextPage, '| errors:', JSON.stringify((result as Record<string, unknown>).errors))
+    const fields = result.data?.address?.addressAt?.dynamicFields
+    console.log('[bootstrap] nodes:', fields?.nodes?.length ?? 'null', '| hasNextPage:', fields?.pageInfo?.hasNextPage, '| errors:', JSON.stringify((result as Record<string, unknown>).errors ?? null))
 
     if (!fields?.nodes?.length) { bootstrapComplete = true; break }
 
     const rows = fields.nodes.map((node) => {
-      // contents.json = Domain key struct { labels: ["sui", "example"] }
       const contentJson = node.contents?.json
       if (!contentJson) return null
 
-      // value = NameRecord { expiration_timestamp_ms, nft_id, target_address }
-      let ownerAddress: string | null = null
-      let valueJson: Record<string, unknown> | null = null
-
-      if (node.value?.__typename === 'MoveObject') {
-        valueJson = node.value.contents?.json ?? null
-        if (node.value.owner?.__typename === 'AddressOwner') {
-          ownerAddress = node.value.owner.address?.address ?? null
-        }
-      } else {
-        valueJson = node.value?.json ?? null
-      }
+      const ownerAddress = extractOwnerFromValue(node.value)
+      const valueJson = extractValueJson(node.value)
 
       const merged: Record<string, unknown> = {
         name: contentJson,
@@ -436,16 +346,17 @@ async function fetchDomainByName(graphql: SuiGraphQLClient, domainName: string) 
         object: {
           owner: {
             __typename: string
-            owner?: { address: string }
+            address?: { address: string }
           } | null
         } | null
       }
+
       const NFT_OWNER_QUERY = `
         query GetNftOwner($id: SuiAddress!) {
           object(address: $id) {
             owner {
               __typename
-              ... on AddressOwner { owner { address } }
+              ... on AddressOwner { address { address } }
             }
           }
         }
@@ -459,7 +370,7 @@ async function fetchDomainByName(graphql: SuiGraphQLClient, domainName: string) 
         )
         const ownerField = nftResult.data?.object?.owner
         if (ownerField?.__typename === 'AddressOwner') {
-          ownerAddress = ownerField.owner?.address ?? null
+          ownerAddress = ownerField.address?.address ?? null
         }
       } catch {
         // owner lookup is best-effort
