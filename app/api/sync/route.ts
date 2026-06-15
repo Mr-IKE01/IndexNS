@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { SuiGraphQLClient } from '@mysten/sui/graphql'
 import { bcs } from '@mysten/bcs'
 import { createServerClient } from '@/lib/supabase/server'
-import { nameToLabels } from '@/lib/sui/parser'
+import { parseDomainFromJson, nameToLabels } from '@/lib/sui/parser'
 import { parseExpiryMs, computeGracePeriodEnd, computeDomainStatus } from '@/lib/sui/time'
 import { withRetry } from '@/lib/sui/retry'
 import {
   SUINS_PACKAGES,
+  SUINS_OBJECTS,
   EVENTS,
   SUI_GRAPHQL_URL,
   DYNAMIC_FIELDS_PAGE_SIZE,
@@ -25,19 +26,34 @@ function getGraphQLClient() {
   return new SuiGraphQLClient({ url: SUI_GRAPHQL_URL, network: 'mainnet' })
 }
 
+const GET_CORE_VERSION_QUERY = `
+  query GetCoreVersion($coreId: SuiAddress!) {
+    object(address: $coreId) {
+      version
+    }
+  }
+`
+
 const BOOTSTRAP_QUERY = `
-  query GetSuinsNFTs($type: String!, $first: Int!, $after: String) {
-    objects(first: $first, after: $after, filter: { type: $type }) {
-      pageInfo {
-        hasNextPage
-        endCursor
-      }
-      nodes {
-        address
-        asMoveObject {
-          owner {
+  query GetDynamicFields($registryId: SuiAddress!, $rootVersion: UInt53!, $first: Int!, $after: String) {
+    address(address: $registryId, rootVersion: $rootVersion) {
+      dynamicFields(first: $first, after: $after) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        nodes {
+          address
+          value {
             __typename
-            ... on AddressOwner { address { address } }
+            ... on MoveValue { json }
+            ... on MoveObject {
+              contents { json }
+              owner {
+                __typename
+                ... on AddressOwner { address { address } }
+              }
+            }
           }
           contents { json }
         }
@@ -166,23 +182,51 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
   let totalThisCall = 0
   let bootstrapComplete = false
 
+  // Step 1: Get the current version of the SuiNS core object
+  // The registry table is wrapped inside it, so we need this as rootVersion
+  type CoreVersionResult = { object: { version: number } | null }
+  let coreVersion: number
+
+  try {
+    const versionResult = await withRetry(() =>
+      graphql.query<CoreVersionResult>({
+        query: GET_CORE_VERSION_QUERY,
+        variables: { coreId: SUINS_OBJECTS.CORE },
+      })
+    )
+    const v = versionResult.data?.object?.version
+    if (!v) throw new Error('Could not fetch SuiNS core object version')
+    coreVersion = v
+    console.log('[bootstrap] core version:', coreVersion)
+  } catch (err) {
+    console.error('[bootstrap] failed to get core version:', err)
+    return NextResponse.json({ error: 'Failed to get core version' }, { status: 500 })
+  }
+
   for (let page = 0; page < MAX_PAGES_PER_INVOCATION; page++) {
     if (Date.now() - startTime > 50_000) break
 
+    type DFNode = {
+      address: string
+      contents: { json: Record<string, unknown> | null } | null
+      value: {
+        __typename: string
+        json?: Record<string, unknown> | null
+        contents?: { json: Record<string, unknown> | null } | null
+        owner?: {
+          __typename: string
+          address?: { address: string }
+        } | null
+      } | null
+    }
+
     type BootstrapResult = {
-      objects: {
-        pageInfo: { hasNextPage: boolean; endCursor: string | null }
-        nodes: Array<{
-          address: string
-          asMoveObject: {
-            owner: {
-              __typename: string
-              address?: { address: string }
-            } | null
-            contents: { json: Record<string, unknown> | null } | null
-          } | null
-        }>
-      }
+      address: {
+        dynamicFields: {
+          pageInfo: { hasNextPage: boolean; endCursor: string | null }
+          nodes: DFNode[]
+        }
+      } | null
     }
 
     let result: { data?: BootstrapResult }
@@ -191,7 +235,8 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
         graphql.query<BootstrapResult>({
           query: BOOTSTRAP_QUERY,
           variables: {
-            type: SUINS_REGISTRATION_TYPE,
+            registryId: SUINS_OBJECTS.REGISTRY_TABLE,
+            rootVersion: coreVersion,
             first: DYNAMIC_FIELDS_PAGE_SIZE,
             after: cursor ?? undefined,
           },
@@ -202,20 +247,35 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
       break
     }
 
-    const objects = result.data?.objects
-    console.log('[bootstrap] raw result.data keys:', Object.keys(result.data ?? {}))
-    console.log('[bootstrap] objects:', JSON.stringify(objects))
-    console.log('[bootstrap] errors:', JSON.stringify((result as Record<string, unknown>).errors))
-    if (!objects?.nodes?.length) { bootstrapComplete = true; break }
+    const fields = result.data?.address?.dynamicFields
+    console.log('[bootstrap] nodes:', fields?.nodes?.length ?? 'null', '| hasNextPage:', fields?.pageInfo?.hasNextPage, '| errors:', JSON.stringify((result as Record<string, unknown>).errors))
 
-    const rows = objects.nodes.map((node) => {
-      const mo = node.asMoveObject
-      const ownerAddress =
-        mo?.owner?.__typename === 'AddressOwner'
-          ? mo.owner.address?.address ?? null
-          : null
+    if (!fields?.nodes?.length) { bootstrapComplete = true; break }
 
-      return parseNftJson(node.address, mo?.contents?.json, ownerAddress)
+    const rows = fields.nodes.map((node) => {
+      // contents.json = Domain key struct { labels: ["sui", "example"] }
+      const contentJson = node.contents?.json
+      if (!contentJson) return null
+
+      // value = NameRecord { expiration_timestamp_ms, nft_id, target_address }
+      let ownerAddress: string | null = null
+      let valueJson: Record<string, unknown> | null = null
+
+      if (node.value?.__typename === 'MoveObject') {
+        valueJson = node.value.contents?.json ?? null
+        if (node.value.owner?.__typename === 'AddressOwner') {
+          ownerAddress = node.value.owner.address?.address ?? null
+        }
+      } else {
+        valueJson = node.value?.json ?? null
+      }
+
+      const merged: Record<string, unknown> = {
+        name: contentJson,
+        value: { fields: valueJson },
+      }
+
+      return parseDomainFromJson(node.address, merged, ownerAddress)
     }).filter((r): r is NonNullable<typeof r> => r !== null)
 
     if (rows.length > 0) {
@@ -226,8 +286,8 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
     }
 
     totalThisCall += rows.length
-    cursor = objects.pageInfo.endCursor ?? null
-    if (!objects.pageInfo.hasNextPage) { bootstrapComplete = true; break }
+    cursor = fields.pageInfo.endCursor ?? null
+    if (!fields.pageInfo.hasNextPage) { bootstrapComplete = true; break }
   }
 
   await supabase.from('sync_state').update({
