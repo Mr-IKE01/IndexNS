@@ -173,6 +173,11 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
 
     if (!fields?.nodes?.length) { bootstrapComplete = true; break }
 
+    // TEMP: log first node raw data to inspect shape
+    if (totalThisCall === 0 && fields.nodes.length > 0) {
+      console.log('[bootstrap] first node sample:', JSON.stringify(fields.nodes[0], null, 2))
+    }
+
     const rows = fields.nodes.map((node) => {
       const contentJson = node.contents?.json
       if (!contentJson) return null
