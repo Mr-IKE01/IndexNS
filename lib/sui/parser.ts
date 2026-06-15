@@ -53,8 +53,11 @@ export function parseDomainFromJson(
     if (!objectId || !json) return null
 
     // Navigate confirmed field paths
-    const nameField = json.name as { fields?: { labels?: unknown } } | undefined
-    const labels = nameField?.fields?.labels
+    // GraphQL returns: json.name.labels (no "fields" wrapper)
+    // gRPC returned:   json.name.fields.labels
+    // Support both shapes for compatibility
+    const nameField = json.name as { fields?: { labels?: unknown }; labels?: unknown } | undefined
+    const labels = nameField?.labels ?? nameField?.fields?.labels
 
     if (!Array.isArray(labels) || labels.length < 2) return null
     if (!labels.every((l): l is string => typeof l === 'string')) return null
@@ -72,9 +75,18 @@ export function parseDomainFromJson(
         nft_id?: unknown
         target_address?: unknown
       }
+      expiration_timestamp_ms?: unknown
+      nft_id?: unknown
+      target_address?: unknown
     } | undefined
 
-    const vf = valueField?.fields
+    // Support both GraphQL shape (no "fields" wrapper) and gRPC shape (with "fields" wrapper)
+    const vf = (valueField?.expiration_timestamp_ms !== undefined ? valueField : valueField?.fields) as {
+      expiration_timestamp_ms?: unknown
+      nft_id?: unknown
+      target_address?: unknown
+    } | undefined
+
     if (!vf?.expiration_timestamp_ms) return null
 
     // Use the bulletproof parser — throws on any invalid value
