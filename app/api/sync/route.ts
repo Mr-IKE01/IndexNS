@@ -137,6 +137,25 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
   for (let page = 0; page < MAX_PAGES_PER_INVOCATION; page++) {
     if (Date.now() - startTime > 50_000) break
 
+    // Refresh checkpoint every 10 pages to stay within consistent range
+    if (page > 0 && page % 10 === 0) {
+      try {
+        const refreshResult = await withRetry(() =>
+          graphql.query<CheckpointResult>({
+            query: GET_LATEST_CHECKPOINT_QUERY,
+            variables: {},
+          })
+        )
+        const c = refreshResult.data?.checkpoint?.sequenceNumber
+        if (c) {
+          checkpoint = c
+          console.log('[bootstrap] refreshed checkpoint:', checkpoint, 'at page', page)
+        }
+      } catch {
+        // Non-fatal — continue with existing checkpoint
+      }
+    }
+
     type DFNode = {
       address: string
       contents: { json: Record<string, unknown> | null } | null
@@ -173,7 +192,12 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
     }
 
     const fields = result.data?.address?.addressAt?.dynamicFields
-    console.log('[bootstrap] nodes:', fields?.nodes?.length ?? 'null', '| hasNextPage:', fields?.pageInfo?.hasNextPage, '| errors:', JSON.stringify((result as Record<string, unknown>).errors ?? null))
+    const errors = (result as Record<string, unknown>).errors
+    console.log('[bootstrap] nodes:', fields?.nodes?.length ?? 'null', '| hasNextPage:', fields?.pageInfo?.hasNextPage, '| errors:', JSON.stringify(errors ?? null))
+
+    // If there are errors, stop this invocation but don't mark bootstrap complete
+    // The next CF Worker tick will retry from the saved cursor with a fresh checkpoint
+    if (errors) { break }
 
     if (!fields?.nodes?.length) { bootstrapComplete = true; break }
 
