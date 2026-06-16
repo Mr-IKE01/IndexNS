@@ -217,6 +217,8 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
     domains_this_call: totalThisCall,
     total_indexed: (state.total_indexed ?? 0) + totalThisCall,
     bootstrap_complete: bootstrapComplete,
+    duration_ms: Date.now() - startTime,
+    pages_processed: Math.ceil(totalThisCall / DYNAMIC_FIELDS_PAGE_SIZE),
   })
 }
 
