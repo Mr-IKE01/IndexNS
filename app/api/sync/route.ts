@@ -23,35 +23,25 @@ function getGraphQLClient() {
   return new SuiGraphQLClient({ url: SUI_GRAPHQL_URL, network: 'mainnet' })
 }
 
-const GET_LATEST_CHECKPOINT_QUERY = `
-  query GetLatestCheckpoint {
-    checkpoint {
-      sequenceNumber
-    }
-  }
-`
-
 const BOOTSTRAP_QUERY = `
-  query GetDynamicFields($registryId: SuiAddress!, $checkpoint: UInt53!, $first: Int!, $after: String) {
+  query GetDynamicFields($registryId: SuiAddress!, $first: Int!, $after: String) {
     address(address: $registryId) {
-      addressAt(checkpoint: $checkpoint) {
-        dynamicFields(first: $first, after: $after) {
-          pageInfo {
-            hasNextPage
-            endCursor
-          }
-          nodes {
-            address
-            contents { json }
-            value {
-              __typename
-              ... on MoveValue { json }
-              ... on MoveObject {
-                contents { json }
-                owner {
-                  __typename
-                  ... on AddressOwner { address { address } }
-                }
+      dynamicFields(first: $first, after: $after) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        nodes {
+          address
+          contents { json }
+          value {
+            __typename
+            ... on MoveValue { json }
+            ... on MoveObject {
+              contents { json }
+              owner {
+                __typename
+                ... on AddressOwner { address { address } }
               }
             }
           }
@@ -115,46 +105,11 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
   let totalThisCall = 0
   let bootstrapComplete = false
 
-  type CheckpointResult = { checkpoint: { sequenceNumber: number } | null }
-  let checkpoint: number
-
-  try {
-    const checkpointResult = await withRetry(() =>
-      graphql.query<CheckpointResult>({
-        query: GET_LATEST_CHECKPOINT_QUERY,
-        variables: {},
-      })
-    )
-    const c = checkpointResult.data?.checkpoint?.sequenceNumber
-    if (!c) throw new Error('Could not fetch latest checkpoint')
-    checkpoint = c
-    console.log('[bootstrap] checkpoint:', checkpoint)
-  } catch (err) {
-    console.error('[bootstrap] failed to get checkpoint:', err)
-    return NextResponse.json({ error: 'Failed to get checkpoint' }, { status: 500 })
-  }
+  console.log('[bootstrap] starting from cursor:', cursor ?? 'beginning')
 
   for (let page = 0; page < MAX_PAGES_PER_INVOCATION; page++) {
     if (Date.now() - startTime > 50_000) break
 
-    // Refresh checkpoint every 10 pages to stay within consistent range
-    if (page > 0 && page % 10 === 0) {
-      try {
-        const refreshResult = await withRetry(() =>
-          graphql.query<CheckpointResult>({
-            query: GET_LATEST_CHECKPOINT_QUERY,
-            variables: {},
-          })
-        )
-        const c = refreshResult.data?.checkpoint?.sequenceNumber
-        if (c) {
-          checkpoint = c
-          console.log('[bootstrap] refreshed checkpoint:', checkpoint, 'at page', page)
-        }
-      } catch {
-        // Non-fatal — continue with existing checkpoint
-      }
-    }
 
     type DFNode = {
       address: string
@@ -164,12 +119,10 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
 
     type BootstrapResult = {
       address: {
-        addressAt: {
-          dynamicFields: {
-            pageInfo: { hasNextPage: boolean; endCursor: string | null }
-            nodes: DFNode[]
-          }
-        } | null
+        dynamicFields: {
+          pageInfo: { hasNextPage: boolean; endCursor: string | null }
+          nodes: DFNode[]
+        }
       } | null
     }
 
@@ -180,7 +133,6 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
           query: BOOTSTRAP_QUERY,
           variables: {
             registryId: SUINS_OBJECTS.REGISTRY_TABLE,
-            checkpoint: checkpoint,
             first: DYNAMIC_FIELDS_PAGE_SIZE,
             after: cursor ?? undefined,
           },
@@ -191,7 +143,7 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
       break
     }
 
-    const fields = result.data?.address?.addressAt?.dynamicFields
+    const fields = result.data?.address?.dynamicFields
     const errors = (result as Record<string, unknown>).errors
     console.log('[bootstrap] nodes:', fields?.nodes?.length ?? 'null', '| hasNextPage:', fields?.pageInfo?.hasNextPage, '| errors:', JSON.stringify(errors ?? null))
 
