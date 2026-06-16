@@ -61,6 +61,8 @@ export function parseDomainFromJson(
 
     if (!Array.isArray(labels) || labels.length < 2) return null
     if (!labels.every((l): l is string => typeof l === 'string')) return null
+    // Filter out subdomains — only index root .sui domains (exactly 2 labels)
+    if (labels.length > 2) return null
 
     // labels = ["sui", "example"] → reverse → "example.sui"
     const name = [...labels].reverse().join('.')
