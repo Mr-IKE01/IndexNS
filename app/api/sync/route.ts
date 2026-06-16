@@ -182,15 +182,11 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
       const contentJson = node.contents?.json
       if (!contentJson) return null
 
+      // contentJson shape: { id, name: { labels: [...] }, value: { nft_id, expiration_timestamp_ms, target_address } }
+      // Pass contentJson directly — the parser now reads json.name.labels and json.value.expiration_timestamp_ms
       const ownerAddress = extractOwnerFromValue(node.value)
-      const valueJson = extractValueJson(node.value)
 
-      const merged: Record<string, unknown> = {
-        name: contentJson,
-        value: { fields: valueJson },
-      }
-
-      return parseDomainFromJson(node.address, merged, ownerAddress)
+      return parseDomainFromJson(node.address, contentJson, ownerAddress)
     }).filter((r): r is NonNullable<typeof r> => r !== null)
 
     if (rows.length > 0) {
