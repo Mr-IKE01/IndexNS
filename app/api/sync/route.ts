@@ -83,10 +83,13 @@ function extractValueJson(value: DFValue): Record<string, unknown> | null {
 }
 
 export async function POST(request: NextRequest) {
-  const secret = request.headers.get('x-sync-secret')
-    ?? request.nextUrl.searchParams.get('secret')
-  console.log('[sync] secret length:', secret?.length, '| env length:', process.env.SYNC_SECRET?.length, '| match:', secret === process.env.SYNC_SECRET)
-  if (!secret || secret !== process.env.SYNC_SECRET) {
+  const headerSecret = request.headers.get('x-sync-secret')
+  const querySecret = request.nextUrl.searchParams.get('secret')
+
+  const validHeader = headerSecret === process.env.SYNC_SECRET
+  const validQuery = querySecret === process.env.TRIGGER_TOKEN
+
+  if (!validHeader && !validQuery) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
