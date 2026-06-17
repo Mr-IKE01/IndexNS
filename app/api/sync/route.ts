@@ -99,7 +99,7 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
   let bootstrapComplete = false
 
   for (let page = 0; page < MAX_PAGES_PER_INVOCATION; page++) {
-    if (Date.now() - startTime > 50_000) break
+    if (Date.now() - startTime > 55_000) break
 
     type DFNode = {
       address: string
