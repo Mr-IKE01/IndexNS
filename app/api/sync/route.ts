@@ -24,8 +24,10 @@ function getGraphQLClient() {
 
 const GET_LATEST_CHECKPOINT_QUERY = `
   query GetLatestCheckpoint {
-    checkpoint {
-      sequenceNumber
+    availableRange {
+      last {
+        sequenceNumber
+      }
     }
   }
 `
@@ -67,7 +69,11 @@ type DFValue = {
   owner?: { __typename?: string; address?: { address?: string } } | null
 } | null
 
-type CheckpointResult = { checkpoint: { sequenceNumber: number } | null }
+type CheckpointResult = {
+  availableRange: {
+    last: { sequenceNumber: number } | null
+  } | null
+}
 
 function extractOwnerFromValue(value: DFValue): string | null {
   if (value?.__typename === 'MoveObject') {
@@ -123,7 +129,7 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
           variables: {},
         })
       )
-      const c = cpResult.data?.checkpoint?.sequenceNumber
+      const c = cpResult.data?.availableRange?.last?.sequenceNumber
       if (!c) throw new Error('No checkpoint returned')
       checkpoint = c
     } catch (err) {
