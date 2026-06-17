@@ -7,7 +7,6 @@ import { parseExpiryMs, computeGracePeriodEnd, computeDomainStatus } from '@/lib
 import { withRetry } from '@/lib/sui/retry'
 import {
   SUINS_OBJECTS,
-  SUINS_PACKAGES,
   EVENTS,
   SUI_GRAPHQL_URL,
   DYNAMIC_FIELDS_PAGE_SIZE,
@@ -23,25 +22,35 @@ function getGraphQLClient() {
   return new SuiGraphQLClient({ url: SUI_GRAPHQL_URL, network: 'mainnet' })
 }
 
+const GET_LATEST_CHECKPOINT_QUERY = `
+  query GetLatestCheckpoint {
+    checkpoint {
+      sequenceNumber
+    }
+  }
+`
+
 const BOOTSTRAP_QUERY = `
-  query GetDynamicFields($registryId: SuiAddress!, $first: Int!, $after: String) {
+  query GetDynamicFields($registryId: SuiAddress!, $checkpoint: UInt53!, $first: Int!, $after: String) {
     address(address: $registryId) {
-      dynamicFields(first: $first, after: $after) {
-        pageInfo {
-          hasNextPage
-          endCursor
-        }
-        nodes {
-          address
-          contents { json }
-          value {
-            __typename
-            ... on MoveValue { json }
-            ... on MoveObject {
-              contents { json }
-              owner {
-                __typename
-                ... on AddressOwner { address { address } }
+      addressAt(checkpoint: $checkpoint) {
+        dynamicFields(first: $first, after: $after) {
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+          nodes {
+            address
+            contents { json }
+            value {
+              __typename
+              ... on MoveValue { json }
+              ... on MoveObject {
+                contents { json }
+                owner {
+                  __typename
+                  ... on AddressOwner { address { address } }
+                }
               }
             }
           }
@@ -58,18 +67,14 @@ type DFValue = {
   owner?: { __typename?: string; address?: { address?: string } } | null
 } | null
 
+type CheckpointResult = { checkpoint: { sequenceNumber: number } | null }
+
 function extractOwnerFromValue(value: DFValue): string | null {
   if (value?.__typename === 'MoveObject') {
     const o = value.owner
     if (o?.__typename === 'AddressOwner') return o.address?.address ?? null
   }
   return null
-}
-
-function extractValueJson(value: DFValue): Record<string, unknown> | null {
-  if (!value) return null
-  if (value.__typename === 'MoveObject') return value.contents?.json ?? null
-  return value.json ?? null
 }
 
 export async function POST(request: NextRequest) {
@@ -105,11 +110,26 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
   let totalThisCall = 0
   let bootstrapComplete = false
 
-  console.log('[bootstrap] starting from cursor:', cursor ?? 'beginning')
-
   for (let page = 0; page < MAX_PAGES_PER_INVOCATION; page++) {
     if (Date.now() - startTime > 50_000) break
 
+    // Fresh checkpoint every single page — consistent range window is ~2 minutes
+    // but we refresh per-page to guarantee we're always within it
+    let checkpoint: number
+    try {
+      const cpResult = await withRetry(() =>
+        graphql.query<CheckpointResult>({
+          query: GET_LATEST_CHECKPOINT_QUERY,
+          variables: {},
+        })
+      )
+      const c = cpResult.data?.checkpoint?.sequenceNumber
+      if (!c) throw new Error('No checkpoint returned')
+      checkpoint = c
+    } catch (err) {
+      console.error('[bootstrap] checkpoint fetch failed:', err)
+      break
+    }
 
     type DFNode = {
       address: string
@@ -119,10 +139,12 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
 
     type BootstrapResult = {
       address: {
-        dynamicFields: {
-          pageInfo: { hasNextPage: boolean; endCursor: string | null }
-          nodes: DFNode[]
-        }
+        addressAt: {
+          dynamicFields: {
+            pageInfo: { hasNextPage: boolean; endCursor: string | null }
+            nodes: DFNode[]
+          }
+        } | null
       } | null
     }
 
@@ -133,6 +155,7 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
           query: BOOTSTRAP_QUERY,
           variables: {
             registryId: SUINS_OBJECTS.REGISTRY_TABLE,
+            checkpoint,
             first: DYNAMIC_FIELDS_PAGE_SIZE,
             after: cursor ?? undefined,
           },
@@ -143,29 +166,20 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
       break
     }
 
-    const fields = result.data?.address?.dynamicFields
+    const fields = result.data?.address?.addressAt?.dynamicFields
     const errors = (result as Record<string, unknown>).errors
-    console.log('[bootstrap] nodes:', fields?.nodes?.length ?? 'null', '| hasNextPage:', fields?.pageInfo?.hasNextPage, '| errors:', JSON.stringify(errors ?? null))
 
-    // If there are errors, stop this invocation but don't mark bootstrap complete
-    // The next CF Worker tick will retry from the saved cursor with a fresh checkpoint
-    if (errors) { break }
+    if (errors) {
+      console.error('[bootstrap] GraphQL errors at page', page, ':', JSON.stringify(errors))
+      break
+    }
 
     if (!fields?.nodes?.length) { bootstrapComplete = true; break }
-
-    // TEMP: log first node raw data to inspect shape
-    if (totalThisCall === 0 && fields.nodes.length > 0) {
-      console.log('[bootstrap] first node sample:', JSON.stringify(fields.nodes[0], null, 2))
-    }
 
     const rows = fields.nodes.map((node) => {
       const contentJson = node.contents?.json
       if (!contentJson) return null
-
-      // contentJson shape: { id, name: { labels: [...] }, value: { nft_id, expiration_timestamp_ms, target_address } }
-      // Pass contentJson directly — the parser now reads json.name.labels and json.value.expiration_timestamp_ms
       const ownerAddress = extractOwnerFromValue(node.value)
-
       return parseDomainFromJson(node.address, contentJson, ownerAddress)
     }).filter((r): r is NonNullable<typeof r> => r !== null)
 
@@ -178,6 +192,11 @@ async function runBootstrap(state: SyncState): Promise<NextResponse> {
 
     totalThisCall += rows.length
     cursor = fields.pageInfo.endCursor ?? null
+
+    if (page % 20 === 0) {
+      console.log('[bootstrap] page:', page, '| total this call:', totalThisCall, '| cursor saved')
+    }
+
     if (!fields.pageInfo.hasNextPage) { bootstrapComplete = true; break }
   }
 
