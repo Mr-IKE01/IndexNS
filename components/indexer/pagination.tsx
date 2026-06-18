@@ -21,24 +21,18 @@ export function Pagination({
 
   if (!totalPages || totalPages <= 1) return null
 
-  // Build page numbers to show (max 7 slots)
   function getPages(): (number | '...')[] {
     if (totalPages === null) return []
     if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1)
 
-    const pages: (number | '...')[] = []
-
-    pages.push(1)
-
+    const pages: (number | '...')[] = [1]
     if (page > 4) pages.push('...')
 
     const start = Math.max(2, page - 2)
     const end = Math.min(totalPages - 1, page + 2)
-
     for (let i = start; i <= end; i++) pages.push(i)
 
     if (page < totalPages - 3) pages.push('...')
-
     pages.push(totalPages)
 
     return pages
@@ -46,33 +40,57 @@ export function Pagination({
 
   const pages = getPages()
 
+  const btnBase: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '32px',
+    height: '32px',
+    borderRadius: '8px',
+    fontSize: '13px',
+    fontWeight: 500,
+    transition: 'all 0.15s',
+    cursor: 'pointer',
+    border: '1px solid transparent',
+  }
+
   return (
-    <div className="flex items-center justify-center gap-1 py-6 px-4">
+    <div className="flex items-center justify-center gap-1 py-8 px-4">
       {/* Prev */}
       <button
         onClick={() => onPageChange(page - 1)}
         disabled={page <= 1}
-        className="flex items-center justify-center w-8 h-8 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        style={{
+          ...btnBase,
+          color: page <= 1 ? 'oklch(0.30 0.05 285)' : 'oklch(0.60 0.05 285)',
+          cursor: page <= 1 ? 'not-allowed' : 'pointer',
+        }}
       >
         <ChevronLeft className="w-4 h-4" />
       </button>
 
-      {/* Page numbers */}
       {pages.map((p, i) =>
         p === '...' ? (
-          <span key={`ellipsis-${i}`} className="w-8 text-center text-zinc-600 text-sm select-none">
+          <span
+            key={`e${i}`}
+            className="w-8 text-center text-xs select-none"
+            style={{ color: 'oklch(0.35 0.05 285)' }}
+          >
             …
           </span>
         ) : (
           <button
             key={p}
             onClick={() => onPageChange(p as number)}
-            className={[
-              'w-8 h-8 rounded-md text-sm font-medium transition-colors',
-              p === page
-                ? 'bg-indigo-600 text-white'
-                : 'text-zinc-400 hover:text-white hover:bg-zinc-800',
-            ].join(' ')}
+            style={p === page ? {
+              ...btnBase,
+              background: 'linear-gradient(135deg, oklch(0.72 0.18 195 / 0.2), oklch(0.60 0.18 285 / 0.2))',
+              color: '#2dd4bf',
+              borderColor: 'oklch(0.72 0.18 195 / 0.4)',
+            } : {
+              ...btnBase,
+              color: 'oklch(0.55 0.05 285)',
+            }}
           >
             {p}
           </button>
@@ -83,17 +101,20 @@ export function Pagination({
       <button
         onClick={() => onPageChange(page + 1)}
         disabled={!hasNextPage}
-        className="flex items-center justify-center w-8 h-8 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        style={{
+          ...btnBase,
+          color: !hasNextPage ? 'oklch(0.30 0.05 285)' : 'oklch(0.60 0.05 285)',
+          cursor: !hasNextPage ? 'not-allowed' : 'pointer',
+        }}
       >
         <ChevronRight className="w-4 h-4" />
       </button>
 
-      {/* Total page indicator */}
       {totalPages && (
-        <span className="ml-2 text-xs text-zinc-600 tabular-nums">
-          of {totalPages.toLocaleString()}
+        <span className="ml-2 text-xs font-mono tabular-nums" style={{ color: 'oklch(0.40 0.05 285)' }}>
+          of {totalPages.toLocaleString()} pages
         </span>
       )}
     </div>
   )
-      }
+}
