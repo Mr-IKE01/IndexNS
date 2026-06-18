@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-/* ── Inlined from shadcn/tailwind.css ── */
 @theme inline {
   @keyframes accordion-down {
     from { height: 0; }
@@ -9,6 +8,10 @@
   @keyframes accordion-up {
     from { height: var(--radix-accordion-content-height, var(--accordion-panel-height, auto)); }
     to { height: 0; }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 1; box-shadow: 0 0 4px 1px currentColor; }
+    50% { opacity: 0.5; box-shadow: 0 0 8px 2px currentColor; }
   }
 }
 
@@ -20,39 +23,6 @@
   &:where([data-state="closed"]),
   &:where([data-closed]:not([data-closed="false"])) { @slot; }
 }
-@custom-variant data-checked {
-  &:where([data-state="checked"]),
-  &:where([data-checked]:not([data-checked="false"])) { @slot; }
-}
-@custom-variant data-unchecked {
-  &:where([data-state="unchecked"]),
-  &:where([data-unchecked]:not([data-unchecked="false"])) { @slot; }
-}
-@custom-variant data-selected {
-  &:where([data-selected="true"]) { @slot; }
-}
-@custom-variant data-disabled {
-  &:where([data-disabled="true"]),
-  &:where([data-disabled]:not([data-disabled="false"])) { @slot; }
-}
-@custom-variant data-active {
-  &:where([data-state="active"]),
-  &:where([data-active]:not([data-active="false"])) { @slot; }
-}
-@custom-variant data-horizontal {
-  &:where([data-orientation="horizontal"]) { @slot; }
-}
-@custom-variant data-vertical {
-  &:where([data-orientation="vertical"]) { @slot; }
-}
-
-@utility no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-  &::-webkit-scrollbar { display: none; }
-}
-/* ── End shadcn inline ── */
-
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -74,98 +44,68 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+
+  /* SuiNS dark purple palette */
+  --background:      oklch(0.13 0.04 285);   /* #1a1333 deep purple */
+  --foreground:      oklch(0.96 0.01 285);   /* near white */
+  --card:            oklch(0.17 0.04 285);   /* slightly lighter purple */
+  --card-foreground: oklch(0.96 0.01 285);
+  --popover:         oklch(0.17 0.04 285);
+  --popover-foreground: oklch(0.96 0.01 285);
+
+  /* Iridescent teal-purple as primary accent */
+  --primary:         oklch(0.72 0.18 195);   /* teal #2dd4bf */
+  --primary-foreground: oklch(0.13 0.04 285);
+
+  --secondary:       oklch(0.20 0.05 285);
+  --secondary-foreground: oklch(0.96 0.01 285);
+  --muted:           oklch(0.20 0.05 285);
+  --muted-foreground:oklch(0.55 0.04 285);
+  --accent:          oklch(0.22 0.06 285);
+  --accent-foreground: oklch(0.96 0.01 285);
+  --destructive:     oklch(0.60 0.22 25);
+  --border:          oklch(0.25 0.06 285);   /* subtle purple border */
+  --input:           oklch(0.22 0.05 285);
+  --ring:            oklch(0.72 0.18 195);
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+/* SuiNS iridescent gradient — used on domain names and key accents */
+.sui-gradient {
+  background: linear-gradient(90deg, #ff6b6b 0%, #ffd93d 40%, #6bcb77 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Iridescent glow border — used on cards */
+.sui-border {
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+}
+.sui-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #2dd4bf22, #818cf844, #a78bfa22);
+  z-index: -1;
+}
+
+/* Pulse glow animation for live indicator */
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
 }
 
 @layer base {
   * { @apply border-border outline-ring/50; }
-  body { @apply bg-background text-foreground; }
+  body { @apply bg-background text-foreground antialiased; }
 }
