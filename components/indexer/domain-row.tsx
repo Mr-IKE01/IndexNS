@@ -13,60 +13,59 @@ interface DomainRowProps {
   domain: SuinsDomain
 }
 
-const LABEL_TYPE_STYLES: Record<LabelType, string> = {
-  numeric: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  alpha:   'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
-  mixed:   'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  emoji:   'bg-pink-500/10 text-pink-400 border-pink-500/20',
-}
-
-const LABEL_TYPE_LABELS: Record<LabelType, string> = {
-  numeric: '123',
-  alpha:   'ABC',
-  mixed:   'A1B2',
-  emoji:   '😀',
+const LABEL_TYPE_CONFIG: Record<LabelType, { label: string; style: React.CSSProperties }> = {
+  numeric: {
+    label: '123',
+    style: { background: 'oklch(0.55 0.18 255 / 0.15)', color: 'oklch(0.75 0.18 255)', border: '1px solid oklch(0.55 0.18 255 / 0.3)' },
+  },
+  alpha: {
+    label: 'ABC',
+    style: { background: 'oklch(0.55 0.10 285 / 0.15)', color: 'oklch(0.72 0.10 285)', border: '1px solid oklch(0.55 0.10 285 / 0.3)' },
+  },
+  mixed: {
+    label: 'A1B',
+    style: { background: 'oklch(0.65 0.18 195 / 0.15)', color: 'oklch(0.72 0.18 195)', border: '1px solid oklch(0.65 0.18 195 / 0.3)' },
+  },
+  emoji: {
+    label: '😀',
+    style: { background: 'oklch(0.65 0.20 55 / 0.15)', color: 'oklch(0.80 0.15 55)', border: '1px solid oklch(0.65 0.20 55 / 0.3)' },
+  },
 }
 
 function LabelTypeBadge({ type }: { type: LabelType }) {
+  const config = LABEL_TYPE_CONFIG[type]
   return (
     <span
-      className={`inline-flex items-center px-1.5 py-0.5 rounded border text-[10px] font-mono font-medium shrink-0 ${LABEL_TYPE_STYLES[type]}`}
+      className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold shrink-0"
+      style={config.style}
       title={`Label type: ${type}`}
     >
-      {LABEL_TYPE_LABELS[type]}
+      {config.label}
     </span>
   )
 }
 
-// Draining urgency bar — shows how close domain is to expiry/grace-end
-function UrgencyBar({ targetMs }: { targetMs: number; variant: 'expiry' | 'grace' }) {
+function UrgencyBar({ targetMs }: { targetMs: number }) {
   const remaining = targetMs - Date.now()
   const pct = Math.max(0, Math.min(100, (remaining / GRACE_PERIOD_MS) * 100))
-
-  const color =
-    pct > 60 ? 'bg-emerald-500' :
-    pct > 20 ? 'bg-yellow-500' :
-    'bg-red-500'
+  const color = pct > 60 ? '#22c55e' : pct > 20 ? '#eab308' : '#ef4444'
 
   return (
-    <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+    <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: 'oklch(0.22 0.05 285)' }}>
       <div
-        className={`h-full ${color} rounded-full transition-none`}
-        style={{ width: `${pct}%` }}
+        className="h-full rounded-full"
+        style={{ width: `${pct}%`, background: color, transition: 'none' }}
       />
     </div>
   )
 }
 
-// Copy to clipboard button with check-mark feedback
 function CopyButton({ value, label }: { value: string; label?: string }) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(value)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
     } catch {
       const el = document.createElement('textarea')
       el.value = value
@@ -74,29 +73,29 @@ function CopyButton({ value, label }: { value: string; label?: string }) {
       el.select()
       document.execCommand('copy')
       document.body.removeChild(el)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
     }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
   }, [value])
 
   return (
     <button
       onClick={handleCopy}
       title={label ? `Copy ${label}` : 'Copy'}
-      className="inline-flex items-center justify-center w-6 h-6 rounded text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 transition-colors shrink-0"
+      className="inline-flex items-center justify-center w-5 h-5 rounded transition-all shrink-0"
+      style={{ color: copied ? '#2dd4bf' : 'oklch(0.45 0.05 285)' }}
     >
       {copied
-        ? <Check className="w-3.5 h-3.5 text-emerald-400" />
-        : <Copy className="w-3.5 h-3.5" />
+        ? <Check className="w-3 h-3" />
+        : <Copy className="w-3 h-3" />
       }
     </button>
   )
 }
 
-// Truncates a wallet address: 0x1234...abcd
 function truncateAddress(address: string): string {
   if (address.length <= 12) return address
-  return `${address.slice(0, 6)}...${address.slice(-4)}`
+  return `${address.slice(0, 6)}…${address.slice(-4)}`
 }
 
 export function DomainRow({ domain }: DomainRowProps) {
@@ -116,49 +115,57 @@ export function DomainRow({ domain }: DomainRowProps) {
     domain_status === 'grace' ? grace_period_end_ms : expiry_timestamp_ms
   const countdownVariant = domain_status === 'grace' ? 'grace' : 'expiry'
 
-  const primaryTs =
-    domain_status === 'grace'
-      ? formatExpiryDate(grace_period_end_ms)
-      : formatExpiryDate(expiry_timestamp_ms)
+  const expiryDisplay = formatExpiryDate(expiry_timestamp_ms)
+  const graceDisplay = formatExpiryDate(grace_period_end_ms)
+  const shortDate = domain_status === 'grace'
+    ? formatExpiryDateShort(grace_period_end_ms)
+    : formatExpiryDateShort(expiry_timestamp_ms)
 
-  const shortDate =
-    domain_status === 'grace'
-      ? formatExpiryDateShort(grace_period_end_ms)
-      : formatExpiryDateShort(expiry_timestamp_ms)
+  const droppedAgo = domain_status === 'expired'
+    ? formatTimeRemaining(grace_period_end_ms)
+    : null
 
-  const droppedAgo =
-    domain_status === 'expired'
-      ? formatTimeRemaining(grace_period_end_ms)
-      : null
+  const rowStyle: React.CSSProperties = {
+    borderBottom: '1px solid oklch(0.22 0.05 285)',
+  }
 
   return (
     <>
-      {/* ── DESKTOP ROW (md and up) ────────────────────────────────────── */}
-      <div className="hidden md:grid grid-cols-[1fr_160px_140px_220px] gap-4 items-center px-4 py-3 border-b border-zinc-800/60 hover:bg-zinc-900/50 transition-colors group">
-
-        {/* Col 1 — Name + type badge + owner + actions */}
+      {/* ── DESKTOP (md+) ─────────────────────────────────────────── */}
+      <div
+        className="hidden md:grid items-start px-4 py-3 gap-3 group hover:bg-white/[0.02] transition-colors"
+        style={{
+          ...rowStyle,
+          gridTemplateColumns: '1fr 160px 130px 200px',
+        }}
+      >
+        {/* Col 1 — Name */}
         <div className="flex flex-col gap-1 min-w-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="font-mono text-sm text-white font-medium truncate">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span
+              className="font-mono text-sm font-semibold truncate"
+              style={{ color: '#f1f5f9' }}
+            >
               {name}
             </span>
             <LabelTypeBadge type={label_type} />
             <CopyButton value={name} label="domain name" />
             {suiScanUrl && (
-              <a
+              
                 href={suiScanUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 title="View on SuiScan"
-                className="inline-flex items-center justify-center w-6 h-6 rounded text-zinc-600 hover:text-indigo-400 hover:bg-zinc-800 transition-colors shrink-0"
+                className="inline-flex items-center justify-center w-5 h-5 rounded transition-colors shrink-0"
+                style={{ color: 'oklch(0.45 0.05 285)' }}
               >
-                <ExternalLink className="w-3.5 h-3.5" />
+                <ExternalLink className="w-3 h-3" />
               </a>
             )}
           </div>
           {owner_address && (
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-zinc-600 font-mono">
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] font-mono" style={{ color: 'oklch(0.45 0.05 285)' }}>
                 {truncateAddress(owner_address)}
               </span>
               <CopyButton value={owner_address} label="owner address" />
@@ -166,112 +173,135 @@ export function DomainRow({ domain }: DomainRowProps) {
           )}
         </div>
 
-        {/* Col 2 — Urgency bar + countdown */}
-        <div className="flex flex-col gap-1.5">
-          {domain_status !== 'expired' && (
-            <UrgencyBar
-              targetMs={countdownTarget}
-              variant={countdownVariant}
-            />
-          )}
+        {/* Col 2 — Countdown */}
+        <div className="flex flex-col gap-1.5 pt-0.5">
+          {domain_status !== 'expired' && <UrgencyBar targetMs={countdownTarget} />}
           {domain_status === 'expired' ? (
-            <span className="text-zinc-500 text-xs">
+            <span className="text-xs font-mono" style={{ color: 'oklch(0.45 0.05 285)' }}>
               {droppedAgo}
             </span>
           ) : (
-            <CountdownTimer
-              targetMs={countdownTarget}
-              variant={countdownVariant}
-            />
+            <CountdownTimer targetMs={countdownTarget} variant={countdownVariant} />
           )}
         </div>
 
         {/* Col 3 — Short date */}
-        <div className="text-right">
-          <span className="text-zinc-500 text-xs font-mono">{shortDate}</span>
+        <div className="flex flex-col gap-0.5 pt-0.5 text-right">
+          <span className="text-xs font-mono" style={{ color: 'oklch(0.55 0.05 285)' }}>
+            {shortDate}
+          </span>
           {domain_status === 'grace' && (
-            <div className="text-xs text-amber-500/70 mt-0.5">grace ends</div>
+            <span className="text-[10px]" style={{ color: '#f59e0b' }}>grace ends</span>
           )}
           {domain_status === 'expired' && (
-            <div className="text-xs text-zinc-600 mt-0.5">available</div>
+            <span className="text-[10px]" style={{ color: '#22c55e' }}>available</span>
           )}
         </div>
 
-        {/* Col 4 — Exact UTC timestamp + copy */}
-        <div className="flex items-center gap-1.5 justify-end">
-          <span className="font-mono text-xs text-zinc-400 select-all">
-            {primaryTs}
-          </span>
-          <CopyButton value={primaryTs} label="timestamp" />
+        {/* Col 4 — Exact timestamps */}
+        <div className="flex flex-col gap-1 pt-0.5 items-end">
+          <div className="flex items-center gap-1">
+            <span className="font-mono text-[11px] select-all" style={{ color: 'oklch(0.60 0.05 285)' }}>
+              {expiryDisplay}
+            </span>
+            <CopyButton value={expiryDisplay} label="expiry timestamp" />
+          </div>
+          {domain_status !== 'expired' && (
+            <div className="flex items-center gap-1">
+              <span className="font-mono text-[10px] select-all" style={{ color: 'oklch(0.45 0.05 285)' }}>
+                {graceDisplay}
+              </span>
+              <CopyButton value={graceDisplay} label="grace end timestamp" />
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ── MOBILE CARD (below md) ─────────────────────────────────────── */}
-      <div className="md:hidden mx-3 mb-2 bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 space-y-2.5">
-
-        {/* Top row — name + badge + icons */}
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-sm text-white font-medium flex-1 truncate">
+      {/* ── MOBILE card ───────────────────────────────────────────── */}
+      <div
+        className="md:hidden mx-3 mb-2 rounded-xl p-3.5 space-y-2.5"
+        style={{
+          background: 'oklch(0.17 0.04 285)',
+          border: '1px solid oklch(0.25 0.07 285)',
+        }}
+      >
+        {/* Name row */}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="font-mono text-sm font-semibold flex-1 truncate" style={{ color: '#f1f5f9' }}>
             {name}
           </span>
           <LabelTypeBadge type={label_type} />
           <CopyButton value={name} label="domain name" />
           {suiScanUrl && (
-            <a
+            
               href={suiScanUrl}
               target="_blank"
               rel="noopener noreferrer"
-              title="View on SuiScan"
-              className="inline-flex items-center justify-center w-6 h-6 rounded text-zinc-600 hover:text-indigo-400 hover:bg-zinc-800 transition-colors"
+              className="inline-flex items-center justify-center w-5 h-5 rounded"
+              style={{ color: 'oklch(0.45 0.05 285)' }}
             >
-              <ExternalLink className="w-3.5 h-3.5" />
+              <ExternalLink className="w-3 h-3" />
             </a>
           )}
         </div>
 
-        {/* Owner address */}
+        {/* Owner */}
         {owner_address && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-zinc-600">Owner:</span>
-            <span className="text-xs text-zinc-500 font-mono">
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] font-mono" style={{ color: 'oklch(0.45 0.05 285)' }}>
               {truncateAddress(owner_address)}
             </span>
-            <CopyButton value={owner_address} label="owner address" />
+            <CopyButton value={owner_address} label="owner" />
           </div>
         )}
 
         {/* Urgency bar */}
-        {domain_status !== 'expired' && (
-          <UrgencyBar targetMs={countdownTarget} variant={countdownVariant} />
-        )}
+        {domain_status !== 'expired' && <UrgencyBar targetMs={countdownTarget} />}
 
-        {/* Countdown or dropped-ago */}
+        {/* Countdown / dropped */}
         {domain_status === 'expired' ? (
           <div className="flex items-center justify-between">
-            <span className="text-xs text-zinc-500">Dropped {droppedAgo}</span>
-            <span className="text-xs text-emerald-400 font-medium">Available</span>
+            <span className="text-xs" style={{ color: 'oklch(0.50 0.05 285)' }}>
+              Dropped {droppedAgo}
+            </span>
+            <span className="text-xs font-medium" style={{ color: '#22c55e' }}>Available</span>
           </div>
         ) : (
           <div className="flex items-center justify-between">
-            <CountdownTimer
-              targetMs={countdownTarget}
-              variant={countdownVariant}
-            />
-            <span className="text-xs text-zinc-500 font-mono">{shortDate}</span>
+            <CountdownTimer targetMs={countdownTarget} variant={countdownVariant} />
+            <span className="text-xs font-mono" style={{ color: 'oklch(0.50 0.05 285)' }}>
+              {shortDate}
+            </span>
           </div>
         )}
 
-        {/* Exact UTC timestamp + copy */}
-        <div className="flex items-center gap-1.5 bg-zinc-950/60 rounded-lg px-2.5 py-1.5">
-          <span className="font-mono text-xs text-zinc-400 select-all flex-1">
-            {primaryTs}
-          </span>
-          <CopyButton value={primaryTs} label="timestamp" />
+        {/* Timestamps with copy */}
+        <div
+          className="rounded-lg px-2.5 py-2 space-y-1.5"
+          style={{ background: 'oklch(0.13 0.04 285)' }}
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] uppercase tracking-wider w-12 shrink-0" style={{ color: 'oklch(0.42 0.05 285)' }}>
+              Expiry
+            </span>
+            <span className="font-mono text-[10px] select-all flex-1" style={{ color: 'oklch(0.60 0.05 285)' }}>
+              {expiryDisplay}
+            </span>
+            <CopyButton value={expiryDisplay} label="expiry" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] uppercase tracking-wider w-12 shrink-0" style={{ color: 'oklch(0.42 0.05 285)' }}>
+              Grace
+            </span>
+            <span className="font-mono text-[10px] select-all flex-1" style={{ color: 'oklch(0.50 0.05 285)' }}>
+              {graceDisplay}
+            </span>
+            <CopyButton value={graceDisplay} label="grace end" />
+          </div>
         </div>
 
-        {/* Grace period label */}
         {domain_status === 'grace' && (
-          <div className="text-xs text-amber-500/80 text-center">
+          <div className="text-[10px] text-center" style={{ color: '#f59e0b' }}>
             ⏳ Grace period — original owner can still renew
           </div>
         )}
