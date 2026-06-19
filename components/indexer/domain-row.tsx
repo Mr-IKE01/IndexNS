@@ -109,7 +109,7 @@ export function DomainRow({ domain }: DomainRowProps) {
             <div className="flex items-center ml-2 gap-0.5">
               <CopyButton value={name} label="domain name" />
               {suiScanUrl && (
-                
+                <a
                   href={suiScanUrl}
                   target="_blank"
                   rel="noopener noreferrer"
