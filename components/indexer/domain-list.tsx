@@ -5,62 +5,48 @@ import type { SuinsDomain } from '@/types/domain'
 
 function TableHeader() {
   return (
-    <div
-      className="hidden md:grid px-4 py-2.5 gap-3"
-      style={{
-        gridTemplateColumns: '1fr 160px 130px 200px',
-        borderBottom: '1px solid oklch(0.22 0.05 285)',
-        background: 'oklch(0.15 0.04 285)',
-      }}
-    >
-      {['Domain', 'Countdown', 'Date', 'Exact UTC'].map((h, i) => (
-        <span
-          key={h}
-          className={`text-[10px] font-semibold uppercase tracking-widest ${i >= 2 ? 'text-right' : ''}`}
-          style={{ color: 'oklch(0.40 0.05 285)' }}
-        >
-          {h}
+    <div className="hidden md:grid grid-cols-[1fr_170px_120px_220px] gap-4 px-5 py-2.5 border-b border-white/[0.05] bg-white/[0.01]">
+      {[
+        { label: 'Domain',     align: 'text-left'  },
+        { label: 'Countdown',  align: 'text-left'  },
+        { label: 'Date',       align: 'text-right' },
+        { label: 'Exact UTC',  align: 'text-right' },
+      ].map(({ label, align }) => (
+        <span key={label} className={`text-[10px] font-semibold uppercase tracking-widest text-zinc-600 ${align}`}>
+          {label}
         </span>
       ))}
     </div>
   )
 }
 
-function SkeletonRow() {
+function SkeletonRow({ index }: { index: number }) {
+  const widths = ['w-32', 'w-24', 'w-28', 'w-20', 'w-36']
+  const w = widths[index % widths.length]
   return (
     <>
       {/* Desktop */}
-      <div
-        className="hidden md:grid px-4 py-3 gap-3"
-        style={{
-          gridTemplateColumns: '1fr 160px 130px 200px',
-          borderBottom: '1px solid oklch(0.20 0.05 285)',
-        }}
-      >
+      <div className="hidden md:grid grid-cols-[1fr_170px_120px_220px] gap-4 px-5 py-4 border-b border-white/[0.05]">
         <div className="space-y-2">
-          <div className="h-3.5 rounded-md w-36 animate-pulse" style={{ background: 'oklch(0.22 0.05 285)' }} />
-          <div className="h-2.5 rounded-md w-24 animate-pulse" style={{ background: 'oklch(0.20 0.05 285)' }} />
+          <div className={`h-3.5 rounded bg-white/[0.05] animate-pulse ${w}`} />
+          <div className="h-2.5 rounded bg-white/[0.03] animate-pulse w-20" />
         </div>
         <div className="space-y-2 pt-0.5">
-          <div className="h-1.5 rounded-full w-full animate-pulse" style={{ background: 'oklch(0.22 0.05 285)' }} />
-          <div className="h-3.5 rounded-md w-28 animate-pulse" style={{ background: 'oklch(0.20 0.05 285)' }} />
+          <div className="h-[3px] rounded-full bg-white/[0.05] animate-pulse w-full" />
+          <div className="h-3.5 rounded bg-white/[0.05] animate-pulse w-28" />
         </div>
-        <div className="h-3.5 rounded-md w-20 ml-auto mt-0.5 animate-pulse" style={{ background: 'oklch(0.22 0.05 285)' }} />
-        <div className="space-y-1.5 items-end flex flex-col pt-0.5">
-          <div className="h-3 rounded-md w-40 animate-pulse" style={{ background: 'oklch(0.22 0.05 285)' }} />
-          <div className="h-2.5 rounded-md w-36 animate-pulse" style={{ background: 'oklch(0.20 0.05 285)' }} />
+        <div className="h-3.5 rounded bg-white/[0.04] animate-pulse w-16 ml-auto mt-0.5" />
+        <div className="flex flex-col items-end gap-1.5 pt-0.5">
+          <div className="h-3 rounded bg-white/[0.05] animate-pulse w-40" />
+          <div className="h-3 rounded bg-white/[0.03] animate-pulse w-36" />
         </div>
       </div>
-
       {/* Mobile */}
-      <div
-        className="md:hidden mx-3 mb-2 rounded-xl p-3.5 space-y-2.5 animate-pulse"
-        style={{ background: 'oklch(0.17 0.04 285)', border: '1px solid oklch(0.22 0.05 285)' }}
-      >
-        <div className="h-4 rounded-md w-32" style={{ background: 'oklch(0.22 0.05 285)' }} />
-        <div className="h-1 rounded-full w-full" style={{ background: 'oklch(0.22 0.05 285)' }} />
-        <div className="h-4 rounded-md w-24" style={{ background: 'oklch(0.20 0.05 285)' }} />
-        <div className="h-12 rounded-lg w-full" style={{ background: 'oklch(0.15 0.04 285)' }} />
+      <div className="md:hidden mx-3 mb-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 space-y-3 animate-pulse">
+        <div className={`h-4 rounded bg-white/[0.05] ${w}`} />
+        <div className="h-[3px] rounded-full bg-white/[0.05] w-full" />
+        <div className="h-4 rounded bg-white/[0.04] w-24" />
+        <div className="h-12 rounded-lg bg-black/20 w-full" />
       </div>
     </>
   )
@@ -75,15 +61,10 @@ interface DomainListProps {
 export function DomainList({ domains, loading, error }: DomainListProps) {
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 space-y-3">
-        <div
-          className="w-12 h-12 rounded-full flex items-center justify-center text-xl"
-          style={{ background: 'oklch(0.60 0.22 25 / 0.12)', border: '1px solid oklch(0.60 0.22 25 / 0.3)' }}
-        >
-          ⚠️
-        </div>
-        <p className="text-sm" style={{ color: 'oklch(0.65 0.10 25)' }}>{error}</p>
-        <p className="text-xs" style={{ color: 'oklch(0.40 0.05 285)' }}>Check your connection and try refreshing</p>
+      <div className="flex flex-col items-center justify-center py-24 gap-3">
+        <span className="text-3xl">⚠️</span>
+        <p className="text-sm text-red-400">{error}</p>
+        <p className="text-xs text-zinc-600">Check your connection and try refreshing</p>
       </div>
     )
   }
@@ -92,22 +73,17 @@ export function DomainList({ domains, loading, error }: DomainListProps) {
     return (
       <>
         <TableHeader />
-        {Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)}
+        {Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} index={i} />)}
       </>
     )
   }
 
   if (!domains.length) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 space-y-3">
-        <div
-          className="w-12 h-12 rounded-full flex items-center justify-center text-xl"
-          style={{ background: 'oklch(0.20 0.05 285)', border: '1px solid oklch(0.25 0.06 285)' }}
-        >
-          🔍
-        </div>
-        <p className="text-sm" style={{ color: 'oklch(0.55 0.05 285)' }}>No domains found</p>
-        <p className="text-xs" style={{ color: 'oklch(0.40 0.05 285)' }}>Try adjusting your filters</p>
+      <div className="flex flex-col items-center justify-center py-24 gap-3">
+        <span className="text-3xl">🔍</span>
+        <p className="text-sm text-zinc-500">No domains match your filters</p>
+        <p className="text-xs text-zinc-600">Try adjusting the length, type, or window</p>
       </div>
     )
   }
