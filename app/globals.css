@@ -9,10 +9,6 @@
     from { height: var(--radix-accordion-content-height, var(--accordion-panel-height, auto)); }
     to { height: 0; }
   }
-  @keyframes pulse-glow {
-    0%, 100% { opacity: 1; box-shadow: 0 0 4px 1px currentColor; }
-    50% { opacity: 0.5; box-shadow: 0 0 8px 2px currentColor; }
-  }
 }
 
 @custom-variant data-open {
@@ -51,61 +47,33 @@
 }
 
 :root {
-  --radius: 0.625rem;
-
-  /* SuiNS dark purple palette */
-  --background:      oklch(0.13 0.04 285);   /* #1a1333 deep purple */
-  --foreground:      oklch(0.96 0.01 285);   /* near white */
-  --card:            oklch(0.17 0.04 285);   /* slightly lighter purple */
-  --card-foreground: oklch(0.96 0.01 285);
-  --popover:         oklch(0.17 0.04 285);
-  --popover-foreground: oklch(0.96 0.01 285);
-
-  /* Iridescent teal-purple as primary accent */
-  --primary:         oklch(0.72 0.18 195);   /* teal #2dd4bf */
-  --primary-foreground: oklch(0.13 0.04 285);
-
-  --secondary:       oklch(0.20 0.05 285);
-  --secondary-foreground: oklch(0.96 0.01 285);
-  --muted:           oklch(0.20 0.05 285);
-  --muted-foreground:oklch(0.55 0.04 285);
-  --accent:          oklch(0.22 0.06 285);
-  --accent-foreground: oklch(0.96 0.01 285);
-  --destructive:     oklch(0.60 0.22 25);
-  --border:          oklch(0.25 0.06 285);   /* subtle purple border */
-  --input:           oklch(0.22 0.05 285);
-  --ring:            oklch(0.72 0.18 195);
-}
-
-/* SuiNS iridescent gradient — used on domain names and key accents */
-.sui-gradient {
-  background: linear-gradient(90deg, #ff6b6b 0%, #ffd93d 40%, #6bcb77 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Iridescent glow border — used on cards */
-.sui-border {
-  border: 1px solid transparent;
-  background-clip: padding-box;
-  position: relative;
-}
-.sui-border::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  background: linear-gradient(135deg, #2dd4bf22, #818cf844, #a78bfa22);
-  z-index: -1;
-}
-
-/* Pulse glow animation for live indicator */
-.pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
+  --radius: 0.75rem;
+  --background: #0d0a17;
+  --foreground: #f4f3f7;
+  --card: #14101f;
+  --card-foreground: #f4f3f7;
+  --popover: #14101f;
+  --popover-foreground: #f4f3f7;
+  --primary: #2dd4bf;
+  --primary-foreground: #0d0a17;
+  --secondary: #1a1628;
+  --secondary-foreground: #f4f3f7;
+  --muted: #1a1628;
+  --muted-foreground: #7c7a8c;
+  --accent: #1e1a2e;
+  --accent-foreground: #f4f3f7;
+  --destructive: #ef4444;
+  --border: #211c33;
+  --input: #1a1628;
+  --ring: #2dd4bf;
 }
 
 @layer base {
   * { @apply border-border outline-ring/50; }
   body { @apply bg-background text-foreground antialiased; }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
