@@ -25,10 +25,15 @@ export function useDomains(
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Track whether initial data was used (skip first fetch if so)
   const isFirstRender = useRef(true)
+  // Sequence guard — ignore any response that isn't from the most recent request.
+  // This is what actually prevents duplicate/stale rows from ever rendering,
+  // regardless of which caller (search debounce, realtime refetch, filter
+  // change) triggered the fetch.
+  const requestId = useRef(0)
 
   const fetchDomains = useCallback(async () => {
+    const thisRequestId = ++requestId.current
     setLoading(true)
     setError(null)
 
@@ -45,6 +50,9 @@ export function useDomains(
     try {
       const res = await fetch(`/api/domains?${params.toString()}`)
 
+      // A newer request has started since this one began — discard this result
+      if (thisRequestId !== requestId.current) return
+
       if (res.status === 401) {
         window.location.href = '/login'
         return
@@ -55,20 +63,22 @@ export function useDomains(
       }
 
       const data: DomainsResponse = await res.json()
+
+      // Re-check after the JSON parse too — belt and suspenders
+      if (thisRequestId !== requestId.current) return
+
       setDomains(data.data)
-      // Only update total when server returns it (page 1 only)
       if (data.total !== null) setTotal(data.total)
     } catch {
+      if (thisRequestId !== requestId.current) return
       setError('Failed to load domains. Check your connection.')
       setDomains([])
     } finally {
-      setLoading(false)
+      if (thisRequestId === requestId.current) setLoading(false)
     }
   }, [filters])
 
   useEffect(() => {
-    // Skip the very first fetch if initial server data was provided and
-    // we are on page 1 with default active tab
     if (
       isFirstRender.current &&
       initialDomains.length > 0 &&
@@ -83,4 +93,4 @@ export function useDomains(
   }, [fetchDomains]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return { domains, total, loading, error, refetch: fetchDomains }
-  }
+}
