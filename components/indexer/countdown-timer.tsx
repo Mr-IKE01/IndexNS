@@ -21,14 +21,14 @@ function formatCountdown(remainingMs: number): string {
 
 function getColorClass(remainingMs: number, variant: 'expiry' | 'grace'): string {
   if (variant === 'grace') {
-    if (remainingMs < 86_400_000) return 'text-red-400 animate-pulse'
+    if (remainingMs < 86_400_000) return 'text-red-400'
     return 'text-amber-400'
   }
   if (remainingMs <= 0) return 'text-zinc-500'
-  if (remainingMs < 86_400_000) return 'text-red-400 animate-pulse'
+  if (remainingMs < 86_400_000) return 'text-red-400'
   if (remainingMs < 7 * 86_400_000) return 'text-yellow-400'
-  if (remainingMs < 30 * 86_400_000) return 'text-white font-medium'
-  return 'text-zinc-300'
+  if (remainingMs < 30 * 86_400_000) return 'text-zinc-100'
+  return 'text-zinc-400'
 }
 
 export function CountdownTimer({
@@ -40,16 +40,17 @@ export function CountdownTimer({
 
   useEffect(() => {
     const tick = () => setRemaining(targetMs - Date.now())
-    tick() // immediate sync
+    tick()
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)
   }, [targetMs])
 
   const colorClass = getColorClass(remaining, variant)
+  const urgent = remaining > 0 && remaining < 86_400_000
 
   return (
-    <span className={`font-mono tabular-nums text-sm ${colorClass} ${className}`}>
+    <span className={`font-mono text-[13px] tabular-nums ${colorClass} ${urgent ? 'animate-pulse' : ''} ${className}`}>
       {formatCountdown(remaining)}
     </span>
   )
-    }
+}
