@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 export default function LoginForm() {
-  const [token, setToken] = useState('')
-  const [error, setError] = useState('')
+  const [token, setToken]   = useState('')
+  const [error, setError]   = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
@@ -38,15 +38,10 @@ export default function LoginForm() {
   }
 
   return (
-    <main
-      className="flex min-h-screen items-center justify-center px-4"
-      style={{ background: 'oklch(0.13 0.04 285)' }}
-    >
-      {/* Ambient background glow */}
-      <div
-        className="pointer-events-none fixed inset-0 overflow-hidden"
-        aria-hidden="true"
-      >
+    <main className="flex min-h-screen items-center justify-center px-4 bg-background">
+
+      {/* Ambient glow blobs */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
         <div
           className="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full opacity-20 blur-3xl"
           style={{ background: 'radial-gradient(ellipse, #818cf8 0%, #2dd4bf 50%, transparent 70%)' }}
@@ -59,12 +54,17 @@ export default function LoginForm() {
 
       <div className="relative w-full max-w-sm space-y-8 z-10">
 
-        {/* Logo mark */}
+        {/* Logo + title */}
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mx-auto relative"
-            style={{ background: 'oklch(0.17 0.06 285)', border: '1px solid oklch(0.30 0.10 285)' }}
+          <div
+            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mx-auto"
+            style={{
+              background: 'oklch(0.17 0.06 285)',
+              border: '1px solid oklch(0.30 0.10 285)',
+            }}
           >
-            <span className="text-3xl font-black tracking-tighter"
+            <span
+              className="text-3xl font-black tracking-tighter"
               style={{
                 background: 'linear-gradient(135deg, #2dd4bf, #818cf8)',
                 WebkitBackgroundClip: 'text',
@@ -78,7 +78,7 @@ export default function LoginForm() {
             <h1 className="text-2xl font-bold tracking-tight text-white">
               SuiNS Indexer
             </h1>
-            <p className="text-sm mt-1" style={{ color: 'oklch(0.55 0.06 285)' }}>
+            <p className="text-sm mt-1 text-zinc-500">
               Private access — invite only
             </p>
           </div>
@@ -90,13 +90,17 @@ export default function LoginForm() {
           style={{
             background: 'oklch(0.17 0.04 285)',
             border: '1px solid oklch(0.28 0.08 285)',
-            boxShadow: '0 0 0 1px oklch(0.30 0.10 195 / 0.3), 0 20px 40px -12px oklch(0.08 0.04 285)',
+            boxShadow:
+              '0 0 0 1px oklch(0.30 0.10 195 / 0.3), 0 20px 40px -12px oklch(0.08 0.04 285)',
           }}
         >
-          {/* Subtle gradient top stripe */}
+          {/* Top gradient line */}
           <div
             className="absolute top-0 left-0 right-0 h-px"
-            style={{ background: 'linear-gradient(90deg, transparent, #2dd4bf55, #818cf855, transparent)' }}
+            style={{
+              background:
+                'linear-gradient(90deg, transparent, #2dd4bf55, #818cf855, transparent)',
+            }}
           />
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -139,10 +143,14 @@ export default function LoginForm() {
               disabled={loading || !token.trim()}
               className="w-full h-10 font-semibold text-sm"
               style={{
-                background: loading || !token.trim()
-                  ? 'oklch(0.22 0.06 285)'
-                  : 'linear-gradient(135deg, #2dd4bf, #818cf8)',
-                color: loading || !token.trim() ? 'oklch(0.45 0.04 285)' : '#0d1117',
+                background:
+                  loading || !token.trim()
+                    ? 'oklch(0.22 0.06 285)'
+                    : 'linear-gradient(135deg, #2dd4bf, #818cf8)',
+                color:
+                  loading || !token.trim()
+                    ? 'oklch(0.45 0.04 285)'
+                    : '#0d1117',
                 border: 'none',
               }}
             >
@@ -158,7 +166,7 @@ export default function LoginForm() {
           </form>
         </div>
 
-        <p className="text-center text-xs" style={{ color: 'oklch(0.40 0.04 285)' }}>
+        <p className="text-center text-xs text-zinc-700">
           Contact the admin if you need access
         </p>
       </div>
