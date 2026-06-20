@@ -29,12 +29,11 @@ interface IndexerPageProps {
 }
 
 export function IndexerPage({ initialDomains, initialTotal, syncState }: IndexerPageProps) {
-  const [filters, setFilters]       = useState<FilterParams>(DEFAULT_FILTERS)
+  const [filters, setFilters]         = useState<FilterParams>(DEFAULT_FILTERS)
   const [searchInput, setSearchInput] = useState('')
 
   useVisitSync()
 
-  // Debounce search → filters.search
   useEffect(() => {
     const t = setTimeout(() => setFilters(f => ({ ...f, search: searchInput, page: 1 })), 300)
     return () => clearTimeout(t)
@@ -77,10 +76,10 @@ export function IndexerPage({ initialDomains, initialTotal, syncState }: Indexer
     : null
 
   return (
-    <div className="min-h-screen bg-[#0d0a17] text-zinc-100">
+    <div className="min-h-screen bg-background text-foreground">
 
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-20 h-14 flex items-center border-b border-white/[0.06] bg-[#0d0a17]/90 backdrop-blur-md">
+      <header className="sticky top-0 z-20 h-14 flex items-center border-b border-white/[0.06] bg-background/90 backdrop-blur-md">
         <div className="max-w-6xl mx-auto w-full px-5 flex items-center justify-between">
 
           {/* Brand */}
