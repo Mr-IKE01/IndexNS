@@ -11,13 +11,14 @@ const SUISCAN_BASE = 'https://suiscan.xyz/mainnet/object'
 
 interface DomainRowProps {
   domain: SuinsDomain
+  index:  number
 }
 
 const LABEL_TYPE_LABEL: Record<LabelType, string> = {
   numeric: '123',
-  alpha: 'abc',
-  mixed: 'a1b',
-  emoji: '😀',
+  alpha:   'abc',
+  mixed:   'a1b',
+  emoji:   '😀',
 }
 
 function LabelTypeBadge({ type }: { type: LabelType }) {
@@ -29,8 +30,8 @@ function LabelTypeBadge({ type }: { type: LabelType }) {
 }
 
 function UrgencyBar({ targetMs }: { targetMs: number }) {
-  const remaining = targetMs - Date.now()
-  const pct = Math.max(0, Math.min(100, (remaining / GRACE_PERIOD_MS) * 100))
+  const remaining  = targetMs - Date.now()
+  const pct        = Math.max(0, Math.min(100, (remaining / GRACE_PERIOD_MS) * 100))
   const colorClass = pct > 60 ? 'bg-emerald-500' : pct > 20 ? 'bg-yellow-500' : 'bg-red-500'
 
   return (
@@ -65,7 +66,10 @@ function CopyButton({ value, label }: { value: string; label?: string }) {
       title={label ? `Copy ${label}` : 'Copy'}
       className="inline-flex items-center justify-center w-[18px] h-[18px] rounded text-zinc-600 hover:text-teal-400 transition-colors shrink-0"
     >
-      {copied ? <Check className="w-[13px] h-[13px]" /> : <Copy className="w-[13px] h-[13px]" />}
+      {copied
+        ? <Check className="w-[13px] h-[13px]" />
+        : <Copy className="w-[13px] h-[13px]" />
+      }
     </button>
   )
 }
@@ -75,7 +79,7 @@ function truncateAddress(address: string): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`
 }
 
-export function DomainRow({ domain }: DomainRowProps) {
+export function DomainRow({ domain, index }: DomainRowProps) {
   const {
     name,
     nft_id,
@@ -86,22 +90,34 @@ export function DomainRow({ domain }: DomainRowProps) {
     domain_status,
   } = domain
 
-  const suiScanUrl = nft_id ? `${SUISCAN_BASE}/${nft_id}` : null
-  const countdownTarget = domain_status === 'grace' ? grace_period_end_ms : expiry_timestamp_ms
-  const countdownVariant = domain_status === 'grace' ? 'grace' : 'expiry'
+  const suiScanUrl        = nft_id ? `${SUISCAN_BASE}/${nft_id}` : null
+  const countdownTarget   = domain_status === 'grace' ? grace_period_end_ms : expiry_timestamp_ms
+  const countdownVariant  = domain_status === 'grace' ? 'grace' : 'expiry'
 
   const expiryDisplay = formatExpiryDate(expiry_timestamp_ms)
-  const graceDisplay = formatExpiryDate(grace_period_end_ms)
-  const shortDate = domain_status === 'grace'
+  const graceDisplay  = formatExpiryDate(grace_period_end_ms)
+  const shortDate     = domain_status === 'grace'
     ? formatExpiryDateShort(grace_period_end_ms)
     : formatExpiryDateShort(expiry_timestamp_ms)
-  const droppedAgo = domain_status === 'expired' ? formatTimeRemaining(grace_period_end_ms) : null
+  const droppedAgo = domain_status === 'expired'
+    ? formatTimeRemaining(grace_period_end_ms)
+    : null
+
+  const rowNum = String(index).padStart(2, '0')
 
   return (
     <>
       {/* ── DESKTOP ─────────────────────────────────────────────── */}
-      <div className="hidden md:grid grid-cols-[1fr_170px_120px_220px] gap-4 items-center px-5 py-4 border-b border-white/[0.05] hover:bg-white/[0.015] transition-colors">
+      <div className="hidden md:grid grid-cols-[44px_1fr_170px_120px_220px] gap-4 items-center px-4 py-3.5 mb-2 rounded-xl border border-white/[0.06] bg-white/[0.01] hover:bg-white/[0.03] hover:border-white/[0.10] transition-all">
 
+        {/* Row number */}
+        <div className="flex items-center justify-center shrink-0">
+          <span className="text-[11px] font-mono text-zinc-700 tabular-nums select-none">
+            {rowNum}
+          </span>
+        </div>
+
+        {/* Domain name + owner */}
         <div className="min-w-0">
           <div className="flex items-center">
             <span className="font-mono text-[14px] font-medium text-zinc-100 truncate">{name}</span>
@@ -109,7 +125,7 @@ export function DomainRow({ domain }: DomainRowProps) {
             <div className="flex items-center ml-2 gap-0.5">
               <CopyButton value={name} label="domain name" />
               {suiScanUrl && (
-                <a
+               <a 
                   href={suiScanUrl}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -123,12 +139,15 @@ export function DomainRow({ domain }: DomainRowProps) {
           </div>
           {owner_address && (
             <div className="flex items-center gap-1 mt-1">
-              <span className="text-[11px] font-mono text-zinc-600">{truncateAddress(owner_address)}</span>
+              <span className="text-[11px] font-mono text-zinc-600">
+                {truncateAddress(owner_address)}
+              </span>
               <CopyButton value={owner_address} label="owner address" />
             </div>
           )}
         </div>
 
+        {/* Countdown */}
         <div className="flex flex-col gap-2">
           {domain_status !== 'expired' && <UrgencyBar targetMs={countdownTarget} />}
           {domain_status === 'expired' ? (
@@ -138,12 +157,14 @@ export function DomainRow({ domain }: DomainRowProps) {
           )}
         </div>
 
+        {/* Short date */}
         <div className="text-right">
           <div className="text-[12px] font-mono text-zinc-500">{shortDate}</div>
-          {domain_status === 'grace' && <div className="text-[10px] text-amber-500 mt-0.5">grace ends</div>}
+          {domain_status === 'grace'   && <div className="text-[10px] text-amber-500 mt-0.5">grace ends</div>}
           {domain_status === 'expired' && <div className="text-[10px] text-emerald-500 mt-0.5">available</div>}
         </div>
 
+        {/* Exact UTC timestamps + copy */}
         <div className="flex flex-col items-end gap-1.5">
           <div className="flex items-center gap-1.5">
             <span className="font-mono text-[11px] text-zinc-500 select-all">{expiryDisplay}</span>
@@ -159,61 +180,88 @@ export function DomainRow({ domain }: DomainRowProps) {
       </div>
 
       {/* ── MOBILE ──────────────────────────────────────────────── */}
-      <div className="md:hidden mx-3 mb-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 space-y-3">
+      <div className="md:hidden mb-2 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.10] transition-all overflow-hidden">
 
-        <div className="flex items-center">
-          <span className="font-mono text-[14px] font-medium text-zinc-100 truncate flex-1">{name}</span>
+        {/* Top row: number + name + badges */}
+        <div className="flex items-center gap-2 px-4 pt-3.5">
+          <span className="text-[10px] font-mono text-zinc-700 tabular-nums shrink-0 select-none w-5 text-right">
+            {rowNum}
+          </span>
+          <span className="font-mono text-[14px] font-medium text-zinc-100 truncate flex-1">
+            {name}
+          </span>
           <LabelTypeBadge type={label_type} />
-          <div className="flex items-center ml-2 gap-0.5">
+          <div className="flex items-center gap-0.5">
             <CopyButton value={name} label="domain name" />
             {suiScanUrl && (
-              <a href={suiScanUrl} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center justify-center w-[18px] h-[18px] rounded text-zinc-600">
+              <a
+                href={suiScanUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center w-[18px] h-[18px] rounded text-zinc-600 hover:text-teal-400 transition-colors"
+              >
                 <ExternalLink className="w-[13px] h-[13px]" />
               </a>
             )}
           </div>
         </div>
 
-        {owner_address && (
-          <div className="flex items-center gap-1">
-            <span className="text-[11px] font-mono text-zinc-600">{truncateAddress(owner_address)}</span>
-            <CopyButton value={owner_address} label="owner" />
-          </div>
-        )}
+        <div className="px-4 pb-3.5 pt-2.5 space-y-3">
 
-        {domain_status !== 'expired' && <UrgencyBar targetMs={countdownTarget} />}
+          {/* Owner address */}
+          {owner_address && (
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] font-mono text-zinc-600">
+                {truncateAddress(owner_address)}
+              </span>
+              <CopyButton value={owner_address} label="owner address" />
+            </div>
+          )}
 
-        {domain_status === 'expired' ? (
-          <div className="flex items-center justify-between">
-            <span className="text-[12px] text-zinc-500">Dropped {droppedAgo}</span>
-            <span className="text-[12px] font-medium text-emerald-500">Available</span>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between">
-            <CountdownTimer targetMs={countdownTarget} variant={countdownVariant} />
-            <span className="text-[12px] font-mono text-zinc-500">{shortDate}</span>
-          </div>
-        )}
+          {/* Urgency bar */}
+          {domain_status !== 'expired' && <UrgencyBar targetMs={countdownTarget} />}
 
-        <div className="rounded-lg bg-black/20 px-3 py-2.5 space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[9px] uppercase tracking-wider text-zinc-600 w-10 shrink-0">Expiry</span>
-            <span className="font-mono text-[11px] text-zinc-400 select-all flex-1 truncate">{expiryDisplay}</span>
-            <CopyButton value={expiryDisplay} label="expiry" />
+          {/* Countdown or dropped label */}
+          {domain_status === 'expired' ? (
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] text-zinc-500">Dropped {droppedAgo}</span>
+              <span className="text-[12px] font-medium text-emerald-500">Available</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <CountdownTimer targetMs={countdownTarget} variant={countdownVariant} />
+              <span className="text-[12px] font-mono text-zinc-500">{shortDate}</span>
+            </div>
+          )}
+
+          {/* Exact timestamps panel */}
+          <div className="rounded-lg bg-black/20 px-3 py-2.5 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] uppercase tracking-wider text-zinc-600 w-10 shrink-0">
+                Expiry
+              </span>
+              <span className="font-mono text-[11px] text-zinc-400 select-all flex-1 truncate">
+                {expiryDisplay}
+              </span>
+              <CopyButton value={expiryDisplay} label="expiry" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] uppercase tracking-wider text-zinc-600 w-10 shrink-0">
+                Grace
+              </span>
+              <span className="font-mono text-[11px] text-zinc-500 select-all flex-1 truncate">
+                {graceDisplay}
+              </span>
+              <CopyButton value={graceDisplay} label="grace end" />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[9px] uppercase tracking-wider text-zinc-600 w-10 shrink-0">Grace</span>
-            <span className="font-mono text-[11px] text-zinc-500 select-all flex-1 truncate">{graceDisplay}</span>
-            <CopyButton value={graceDisplay} label="grace end" />
-          </div>
+
+          {domain_status === 'grace' && (
+            <div className="text-[11px] text-center text-amber-500/90">
+              Grace period — original owner can still renew
+            </div>
+          )}
         </div>
-
-        {domain_status === 'grace' && (
-          <div className="text-[11px] text-center text-amber-500/90">
-            Grace period — original owner can still renew
-          </div>
-        )}
       </div>
     </>
   )
