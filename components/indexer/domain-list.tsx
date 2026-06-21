@@ -3,79 +3,37 @@
 import { DomainRow } from './domain-row'
 import type { SuinsDomain } from '@/types/domain'
 
-function TableHeader() {
+function SkeletonRow() {
   return (
     <div
-      className="hidden md:grid gap-4 px-4 pb-2.5"
-      style={{ gridTemplateColumns: '44px 1fr 170px 120px 220px' }}
+      className="mb-1.5 rounded-xl animate-pulse"
+      style={{ background: '#151228', border: '1px solid #2d2552' }}
     >
-      <span className="text-[10px] font-semibold uppercase tracking-widest text-center"
-        style={{ color: 'rgba(255,255,255,0.25)' }}>
-        #
-      </span>
-      {[
-        { label: 'Domain',    align: 'text-left'  },
-        { label: 'Countdown', align: 'text-left'  },
-        { label: 'Date',      align: 'text-right' },
-        { label: 'Exact UTC', align: 'text-right' },
-      ].map(({ label, align }) => (
-        <span
-          key={label}
-          className={`text-[10px] font-semibold uppercase tracking-widest ${align}`}
-          style={{ color: 'rgba(255,255,255,0.25)' }}
-        >
-          {label}
-        </span>
-      ))}
+      <div className="flex gap-3 px-4 py-3.5">
+        <div className="w-[20px] shrink-0 pt-1">
+          <div className="h-2.5 w-4 rounded ml-auto" style={{ background: '#2d2552' }} />
+        </div>
+        <div className="flex-1 space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-32 rounded" style={{ background: '#2d2552' }} />
+            <div className="h-4 w-8 rounded" style={{ background: '#252040' }} />
+            <div className="h-3.5 w-3.5 rounded" style={{ background: '#252040' }} />
+            <div className="h-3 w-px mx-1" style={{ background: '#2d2552' }} />
+            <div className="h-3 w-20 rounded" style={{ background: '#252040' }} />
+          </div>
+          <div className="flex items-end justify-between gap-4">
+            <div className="space-y-1.5 min-w-[160px]">
+              <div className="h-[3px] w-full rounded-full" style={{ background: '#2d2552' }} />
+              <div className="h-4 w-28 rounded" style={{ background: '#2d2552' }} />
+            </div>
+            <div className="space-y-1.5">
+              <div className="h-3 w-44 rounded ml-auto" style={{ background: '#252040' }} />
+              <div className="h-3 w-40 rounded ml-auto" style={{ background: '#252040' }} />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  )
-}
-
-function SkeletonRow({ index }: { index: number }) {
-  const widths = ['w-32', 'w-24', 'w-28', 'w-20', 'w-36']
-  const w = widths[index % widths.length]
-
-  return (
-    <>
-      {/* Desktop skeleton */}
-      <div
-        className="hidden md:grid gap-4 items-center px-4 py-4 mb-2 rounded-xl animate-pulse"
-        style={{
-          gridTemplateColumns: '44px 1fr 170px 120px 220px',
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.07)',
-        }}
-      >
-        <div className="h-3 w-5 rounded mx-auto" style={{ background: 'rgba(255,255,255,0.08)' }} />
-        <div className="space-y-2">
-          <div className={`h-3.5 rounded ${w}`} style={{ background: 'rgba(255,255,255,0.08)' }} />
-          <div className="h-2.5 rounded w-20" style={{ background: 'rgba(255,255,255,0.05)' }} />
-        </div>
-        <div className="space-y-2">
-          <div className="h-[3px] rounded-full w-full" style={{ background: 'rgba(255,255,255,0.08)' }} />
-          <div className="h-3.5 rounded w-28" style={{ background: 'rgba(255,255,255,0.08)' }} />
-        </div>
-        <div className="h-3.5 rounded w-16 ml-auto" style={{ background: 'rgba(255,255,255,0.06)' }} />
-        <div className="flex flex-col items-end gap-1.5">
-          <div className="h-3 rounded w-40" style={{ background: 'rgba(255,255,255,0.08)' }} />
-          <div className="h-3 rounded w-36" style={{ background: 'rgba(255,255,255,0.05)' }} />
-        </div>
-      </div>
-
-      {/* Mobile skeleton */}
-      <div
-        className="md:hidden mb-2 rounded-xl p-4 space-y-3 animate-pulse"
-        style={{
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.07)',
-        }}
-      >
-        <div className={`h-4 rounded ${w}`} style={{ background: 'rgba(255,255,255,0.08)' }} />
-        <div className="h-[3px] rounded-full w-full" style={{ background: 'rgba(255,255,255,0.08)' }} />
-        <div className="h-4 rounded w-24" style={{ background: 'rgba(255,255,255,0.06)' }} />
-        <div className="h-12 rounded-lg" style={{ background: 'rgba(0,0,0,0.3)' }} />
-      </div>
-    </>
   )
 }
 
@@ -91,7 +49,9 @@ export function DomainList({ domains, loading, error }: DomainListProps) {
       <div className="flex flex-col items-center justify-center py-24 gap-3">
         <span className="text-3xl">⚠️</span>
         <p className="text-sm text-red-400">{error}</p>
-        <p className="text-xs text-zinc-600">Check your connection and try refreshing</p>
+        <p className="text-xs" style={{ color: '#52525b' }}>
+          Check your connection and try refreshing
+        </p>
       </div>
     )
   }
@@ -99,9 +59,8 @@ export function DomainList({ domains, loading, error }: DomainListProps) {
   if (loading) {
     return (
       <div className="px-5 pt-4">
-        <TableHeader />
-        {Array.from({ length: 8 }).map((_, i) => (
-          <SkeletonRow key={i} index={i} />
+        {Array.from({ length: 10 }).map((_, i) => (
+          <SkeletonRow key={i} />
         ))}
       </div>
     )
@@ -111,20 +70,31 @@ export function DomainList({ domains, loading, error }: DomainListProps) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3">
         <span className="text-3xl">🔍</span>
-        <p className="text-sm text-zinc-500">No domains match your filters</p>
-        <p className="text-xs text-zinc-600">Try adjusting the length, type, or window</p>
+        <p className="text-sm" style={{ color: '#71717a' }}>
+          No domains match your filters
+        </p>
+        <p className="text-xs" style={{ color: '#52525b' }}>
+          Try adjusting length, type, or window
+        </p>
       </div>
     )
   }
 
   return (
-    <div className="px-5 pt-4">
-      <TableHeader />
-      <div>
-        {domains.map((domain, i) => (
-          <DomainRow key={domain.id} domain={domain} index={i + 1} />
-        ))}
+    <div className="px-5 pt-3 pb-2">
+      {/* Result count header */}
+      <div className="flex items-center justify-between mb-3 px-1">
+        <span className="text-[10px] uppercase tracking-widest font-medium" style={{ color: '#3d3a52' }}>
+          Domains
+        </span>
+        <span className="font-mono text-[10px]" style={{ color: '#3d3a52' }}>
+          {domains.length} shown
+        </span>
       </div>
+
+      {domains.map((domain, i) => (
+        <DomainRow key={domain.id} domain={domain} index={i + 1} />
+      ))}
     </div>
   )
 }
