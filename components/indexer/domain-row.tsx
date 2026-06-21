@@ -22,7 +22,7 @@ const LABEL_DISPLAY: Record<LabelType, string> = {
 }
 
 function UrgencyBar({ targetMs }: { targetMs: number }) {
-  const remaining = targetMs - Date.now()
+  const remaining = Number(targetMs) - Date.now()
   const pct       = Math.max(0, Math.min(100, (remaining / GRACE_PERIOD_MS) * 100))
   const color     = pct > 60 ? '#34d399' : pct > 20 ? '#fbbf24' : '#f87171'
 
@@ -92,18 +92,19 @@ export function DomainRow({ domain, index }: DomainRowProps) {
 
   const isExpired    = domain_status === 'expired'
   const isGrace      = domain_status === 'grace'
-  const countdownTarget  = isGrace ? grace_period_end_ms : expiry_timestamp_ms
-  const countdownVariant = isGrace ? 'grace' : 'expiry'
-  const suiScanUrl       = nft_id ? `${SUISCAN_BASE}/${nft_id}` : null
 
+  // Explicit Number() — Supabase BigInt columns come as strings over JSON
+  const countdownTarget  = Number(isGrace ? grace_period_end_ms : expiry_timestamp_ms)
+  const countdownVariant = isGrace ? 'grace' : 'expiry'
+
+  const suiScanUrl    = nft_id ? `${SUISCAN_BASE}/${nft_id}` : null
   const expiryDisplay = formatExpiryDate(expiry_timestamp_ms)
   const graceDisplay  = formatExpiryDate(grace_period_end_ms)
   const shortDate     = isGrace
     ? formatExpiryDateShort(grace_period_end_ms)
     : formatExpiryDateShort(expiry_timestamp_ms)
   const droppedAgo = isExpired ? formatTimeRemaining(grace_period_end_ms) : null
-
-  const rowNum = String(index).padStart(2, '0')
+  const rowNum     = String(index).padStart(2, '0')
 
   return (
     <div
@@ -111,13 +112,13 @@ export function DomainRow({ domain, index }: DomainRowProps) {
       style={{ background: '#151228', border: '1px solid #2d2552' }}
       onMouseEnter={e => {
         const el = e.currentTarget as HTMLElement
-        el.style.borderColor = '#4a3f7e'
         el.style.background  = '#1a163a'
+        el.style.borderColor = '#4a3f7e'
       }}
       onMouseLeave={e => {
         const el = e.currentTarget as HTMLElement
-        el.style.borderColor = '#2d2552'
         el.style.background  = '#151228'
+        el.style.borderColor = '#2d2552'
       }}
     >
       <div className="flex gap-3 px-4 py-3.5">
@@ -132,7 +133,7 @@ export function DomainRow({ domain, index }: DomainRowProps) {
         {/* All content */}
         <div className="min-w-0 flex-1 space-y-2.5">
 
-          {/* ── Name row ── */}
+          {/* Name + owner */}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="font-mono text-[14px] font-semibold text-zinc-100 truncate">
               {name}
@@ -177,10 +178,10 @@ export function DomainRow({ domain, index }: DomainRowProps) {
             )}
           </div>
 
-          {/* ── Timer + dates row ── */}
+          {/* Timer + timestamps */}
           <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
 
-            {/* Urgency bar + ticking countdown */}
+            {/* Left: bar + countdown */}
             <div className="flex min-w-[160px] flex-col gap-1.5">
               {!isExpired && <UrgencyBar targetMs={countdownTarget} />}
 
@@ -196,19 +197,13 @@ export function DomainRow({ domain, index }: DomainRowProps) {
               )}
             </div>
 
-            {/* Exact UTC timestamps */}
+            {/* Right: exact UTC timestamps */}
             <div className="flex flex-col items-end gap-1.5">
               <div className="flex items-center gap-1.5">
-                <span
-                  className="text-[9px] uppercase tracking-widest"
-                  style={{ color: '#3d3a52' }}
-                >
+                <span className="text-[9px] uppercase tracking-widest" style={{ color: '#3d3a52' }}>
                   Exp
                 </span>
-                <span
-                  className="select-all font-mono text-[11px]"
-                  style={{ color: '#71717a' }}
-                >
+                <span className="select-all font-mono text-[11px]" style={{ color: '#71717a' }}>
                   {expiryDisplay}
                 </span>
                 <CopyButton value={expiryDisplay} label="expiry timestamp" />
@@ -216,16 +211,10 @@ export function DomainRow({ domain, index }: DomainRowProps) {
 
               {!isExpired && (
                 <div className="flex items-center gap-1.5">
-                  <span
-                    className="text-[9px] uppercase tracking-widest"
-                    style={{ color: '#3d3a52' }}
-                  >
+                  <span className="text-[9px] uppercase tracking-widest" style={{ color: '#3d3a52' }}>
                     Grace
                   </span>
-                  <span
-                    className="select-all font-mono text-[11px]"
-                    style={{ color: '#52525b' }}
-                  >
+                  <span className="select-all font-mono text-[11px]" style={{ color: '#52525b' }}>
                     {graceDisplay}
                   </span>
                   <CopyButton value={graceDisplay} label="grace end timestamp" />
