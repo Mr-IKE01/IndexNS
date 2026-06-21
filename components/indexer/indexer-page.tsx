@@ -76,18 +76,34 @@ export function IndexerPage({ initialDomains, initialTotal, syncState }: Indexer
     : null
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen" style={{ background: '#0d0a17', color: '#e4e4e7' }}>
 
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-20 h-14 flex items-center border-b border-white/[0.06] bg-background/90 backdrop-blur-md">
+      <header
+        className="sticky top-0 z-20 h-14 flex items-center"
+        style={{
+          background: 'rgba(13,10,23,0.92)',
+          borderBottom: '1px solid rgba(255,255,255,0.07)',
+          backdropFilter: 'blur(12px)',
+        }}
+      >
         <div className="max-w-6xl mx-auto w-full px-5 flex items-center justify-between">
 
           {/* Brand */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-teal-400/[0.10] border border-teal-400/20 text-teal-300 text-[11px] font-black tracking-tight">
+            <div
+              className="flex items-center justify-center w-7 h-7 rounded-lg text-[11px] font-black tracking-tight"
+              style={{
+                background: 'rgba(45,212,191,0.10)',
+                border: '1px solid rgba(45,212,191,0.20)',
+                color: '#5eead4',
+              }}
+            >
               .NS
             </div>
-            <span className="font-semibold text-[14px] text-zinc-100 tracking-tight">SuiNS Indexer</span>
+            <span className="font-semibold text-[14px] text-zinc-100 tracking-tight">
+              SuiNS Indexer
+            </span>
             <div className="hidden sm:flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-[11px] font-mono text-zinc-600">mainnet</span>
@@ -98,7 +114,7 @@ export function IndexerPage({ initialDomains, initialTotal, syncState }: Indexer
           <div className="flex items-center gap-4">
             {syncState && (
               <div className="hidden sm:flex items-center gap-1.5">
-                <span className="text-[11px] font-mono text-zinc-600 tabular-nums">
+                <span className="text-[11px] font-mono text-zinc-500 tabular-nums">
                   {syncState.total_indexed?.toLocaleString()}
                 </span>
                 <span className="text-[11px] text-zinc-700">indexed</span>
@@ -111,7 +127,16 @@ export function IndexerPage({ initialDomains, initialTotal, syncState }: Indexer
             )}
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 text-[12px] text-zinc-500 hover:text-zinc-200 transition-colors px-2.5 py-1.5 rounded-md hover:bg-white/[0.05] border border-transparent hover:border-white/[0.06]"
+              className="flex items-center gap-1.5 text-[12px] text-zinc-500 hover:text-zinc-200 transition-colors px-2.5 py-1.5 rounded-md"
+              style={{ border: '1px solid transparent' }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.borderColor = 'transparent'
+              }}
             >
               <LogOut className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Sign out</span>
@@ -122,7 +147,13 @@ export function IndexerPage({ initialDomains, initialTotal, syncState }: Indexer
 
       {/* ── Bootstrap banner ────────────────────────────────────────── */}
       {bootstrapInProgress && (
-        <div className="border-b border-violet-400/[0.15] bg-violet-400/[0.05] px-5 py-3">
+        <div
+          className="px-5 py-3"
+          style={{
+            background: 'rgba(167,139,250,0.05)',
+            borderBottom: '1px solid rgba(167,139,250,0.15)',
+          }}
+        >
           <div className="max-w-6xl mx-auto space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -137,10 +168,16 @@ export function IndexerPage({ initialDomains, initialTotal, syncState }: Indexer
               </div>
               <span className="text-[11px] font-mono text-violet-400">{progressPct}%</span>
             </div>
-            <div className="h-[2px] rounded-full bg-white/[0.06] overflow-hidden">
+            <div
+              className="h-[2px] rounded-full overflow-hidden"
+              style={{ background: 'rgba(255,255,255,0.06)' }}
+            >
               <div
-                className="h-full rounded-full bg-gradient-to-r from-teal-400 to-violet-400 transition-all duration-1000"
-                style={{ width: `${progressPct}%` }}
+                className="h-full rounded-full transition-all duration-1000"
+                style={{
+                  width: `${progressPct}%`,
+                  background: 'linear-gradient(90deg, #2dd4bf, #a78bfa)',
+                }}
               />
             </div>
           </div>
