@@ -17,9 +17,9 @@ export default function LoginForm() {
     setError('')
     try {
       const res = await fetch('/api/auth/login', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: token.trim() }),
+        body:    JSON.stringify({ token: token.trim() }),
       })
       if (res.ok) {
         router.push('/')
@@ -35,147 +35,99 @@ export default function LoginForm() {
     }
   }
 
-  const isDisabled = loading || !token.trim()
+  const canSubmit = !loading && token.trim().length > 0
 
   return (
-    <main
-      className="flex min-h-screen items-center justify-center px-4"
-      style={{ background: '#0d0a17' }}
-    >
-      {/* Ambient glow blobs */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
-        <div
-          className="absolute -top-60 left-1/2 -translate-x-1/2 w-[700px] h-[500px] rounded-full blur-3xl"
-          style={{ background: 'radial-gradient(ellipse, rgba(129,140,248,0.35) 0%, rgba(45,212,191,0.2) 50%, transparent 70%)' }}
-        />
-        <div
-          className="absolute -bottom-20 -right-20 w-[450px] h-[450px] rounded-full blur-3xl"
-          style={{ background: 'radial-gradient(ellipse, rgba(167,139,250,0.2) 0%, transparent 70%)' }}
-        />
-        <div
-          className="absolute bottom-0 -left-20 w-[350px] h-[350px] rounded-full blur-3xl"
-          style={{ background: 'radial-gradient(ellipse, rgba(45,212,191,0.12) 0%, transparent 70%)' }}
-        />
+    <main className="relative flex min-h-screen items-center justify-center px-4 overflow-hidden"
+      style={{ background: '#0d0a17' }}>
+
+      {/* Glow blobs */}
+      <div className="pointer-events-none fixed inset-0" aria-hidden="true">
+        <div className="absolute -top-48 left-1/2 -translate-x-1/2 h-[500px] w-[700px] rounded-full blur-[120px]"
+          style={{ background: 'radial-gradient(ellipse, rgba(129,140,248,0.3) 0%, rgba(45,212,191,0.15) 50%, transparent 70%)' }} />
+        <div className="absolute -bottom-24 -right-24 h-[400px] w-[400px] rounded-full blur-[100px]"
+          style={{ background: 'radial-gradient(ellipse, rgba(167,139,250,0.18) 0%, transparent 70%)' }} />
+        <div className="absolute -bottom-16 -left-16 h-[300px] w-[300px] rounded-full blur-[80px]"
+          style={{ background: 'radial-gradient(ellipse, rgba(45,212,191,0.10) 0%, transparent 70%)' }} />
       </div>
 
-      <div className="relative w-full max-w-md z-10">
+      <div className="relative z-10 w-full max-w-md">
 
-        {/* Logo + heading */}
-        <div className="text-center mb-10">
-          <div
-            className="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-6 relative overflow-hidden"
-            style={{
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              boxShadow: '0 0 40px rgba(45,212,191,0.15)',
-            }}
-          >
-            <span
-              className="text-4xl font-black tracking-tighter relative z-10 select-none"
-              style={{
-                background: 'linear-gradient(135deg, #2dd4bf 0%, #818cf8 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
+        {/* Logo */}
+        <div className="mb-10 text-center">
+          <div className="relative mx-auto mb-6 inline-flex h-[72px] w-[72px] items-center justify-center rounded-2xl"
+            style={{ background: '#151228', border: '1px solid #2d2552', boxShadow: '0 0 32px rgba(45,212,191,0.12)' }}>
+            <span className="text-[32px] font-black tracking-tighter select-none"
+              style={{ background: 'linear-gradient(135deg, #2dd4bf 0%, #818cf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               .NS
             </span>
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">SuiNS Indexer</h1>
-          <p className="mt-2 text-sm text-zinc-500">Private access — invite only</p>
+          <h1 className="text-[28px] font-bold tracking-tight text-zinc-100">SuiNS Indexer</h1>
+          <p className="mt-1.5 text-sm text-zinc-600">Private access · invite only</p>
         </div>
 
-        {/* Form card */}
-        <div
-          className="rounded-2xl p-8 relative overflow-hidden"
-          style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            boxShadow: '0 0 0 1px rgba(130,100,255,0.08), 0 25px 50px -12px rgba(0,0,0,0.6)',
-          }}
-        >
-          {/* Top shimmer stripe */}
-          <div
-            className="absolute top-0 left-0 right-0 h-px"
-            style={{
-              background: 'linear-gradient(90deg, transparent 0%, rgba(45,212,191,0.5) 40%, rgba(129,140,248,0.5) 60%, transparent 100%)',
-            }}
-          />
+        {/* Card */}
+        <div className="relative overflow-hidden rounded-2xl p-8"
+          style={{ background: '#151228', border: '1px solid #2d2552', boxShadow: '0 0 0 1px rgba(45,212,191,0.05), 0 24px 48px -12px rgba(0,0,0,0.7)' }}>
+
+          {/* Top shimmer */}
+          <div className="absolute inset-x-0 top-0 h-px"
+            style={{ background: 'linear-gradient(90deg, transparent, rgba(45,212,191,0.45), rgba(129,140,248,0.45), transparent)' }} />
 
           <form onSubmit={handleSubmit} className="space-y-5">
 
-            {/* Token input */}
             <div className="space-y-2">
-              <label
-                htmlFor="token"
-                className="flex items-center gap-1.5 text-sm font-medium"
-                style={{ color: 'rgba(255,255,255,0.75)' }}
-              >
-                <Lock className="w-3.5 h-3.5 text-zinc-500" />
+              <label htmlFor="token" className="flex items-center gap-1.5 text-[13px] font-medium text-zinc-400">
+                <Lock className="h-3.5 w-3.5 text-zinc-600" />
                 Access token
               </label>
-
-              <div className="relative">
-                <input
-                  id="token"
-                  type="password"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  placeholder="tok_••••••••••••••••"
-                  autoComplete="current-password"
-                  autoFocus
-                  disabled={loading}
-                  className="w-full h-11 rounded-xl px-4 text-[13px] font-mono text-zinc-100 placeholder:text-zinc-600 outline-none transition-all duration-200 disabled:opacity-50"
-                  style={{
-                    background: 'rgba(0,0,0,0.4)',
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    color: '#e4e4e7',
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(45,212,191,0.55)'
-                    e.currentTarget.style.boxShadow   = '0 0 0 3px rgba(45,212,191,0.10)'
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'
-                    e.currentTarget.style.boxShadow   = 'none'
-                  }}
-                />
-              </div>
+              <input
+                id="token"
+                type="password"
+                value={token}
+                onChange={e => setToken(e.target.value)}
+                placeholder="tok_••••••••••••••••"
+                autoComplete="current-password"
+                autoFocus
+                disabled={loading}
+                className="w-full rounded-xl px-4 py-3 font-mono text-[13px] text-zinc-100 placeholder:text-zinc-700 outline-none transition-all duration-200 disabled:opacity-50"
+                style={{ background: '#0d0a17', border: '1px solid #2d2552' }}
+                onFocus={e => {
+                  e.currentTarget.style.borderColor = 'rgba(45,212,191,0.5)'
+                  e.currentTarget.style.boxShadow   = '0 0 0 3px rgba(45,212,191,0.08)'
+                }}
+                onBlur={e => {
+                  e.currentTarget.style.borderColor = '#2d2552'
+                  e.currentTarget.style.boxShadow   = 'none'
+                }}
+              />
             </div>
 
-            {/* Error message */}
             {error && (
-              <div
-                className="flex items-start gap-2.5 rounded-xl px-4 py-3 text-sm"
-                style={{
-                  background: 'rgba(239,68,68,0.08)',
-                  border: '1px solid rgba(239,68,68,0.25)',
-                  color: '#fca5a5',
-                }}
-              >
+              <div className="flex items-start gap-2.5 rounded-xl px-4 py-3 text-[13px]"
+                style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#fca5a5' }}>
                 <span className="mt-px shrink-0">⚠</span>
-                <span>{error}</span>
+                {error}
               </div>
             )}
 
-            {/* Submit */}
             <button
               type="submit"
-              disabled={isDisabled}
-              className="w-full h-11 rounded-xl text-[14px] font-semibold tracking-tight flex items-center justify-center gap-2 transition-all duration-200"
+              disabled={!canSubmit}
+              className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[14px] font-semibold transition-all duration-200"
               style={{
-                background: isDisabled
-                  ? 'rgba(255,255,255,0.06)'
-                  : 'linear-gradient(135deg, #2dd4bf 0%, #818cf8 100%)',
-                color: isDisabled ? 'rgba(255,255,255,0.25)' : '#0d1117',
-                border: isDisabled ? '1px solid rgba(255,255,255,0.08)' : 'none',
-                boxShadow: isDisabled ? 'none' : '0 0 24px rgba(45,212,191,0.25)',
-                cursor: isDisabled ? 'not-allowed' : 'pointer',
+                background: canSubmit
+                  ? 'linear-gradient(135deg, #2dd4bf 0%, #818cf8 100%)'
+                  : '#1e1a30',
+                color:      canSubmit ? '#0d0a17' : '#3f3f46',
+                border:     canSubmit ? 'none' : '1px solid #2d2552',
+                boxShadow:  canSubmit ? '0 0 24px rgba(45,212,191,0.2)' : 'none',
+                cursor:     canSubmit ? 'pointer' : 'not-allowed',
               }}
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Authenticating…
                 </>
               ) : (
@@ -185,8 +137,7 @@ export default function LoginForm() {
           </form>
         </div>
 
-        {/* Footer note */}
-        <p className="text-center text-xs text-zinc-700 mt-6">
+        <p className="mt-6 text-center text-xs text-zinc-800">
           Contact the admin if you need access
         </p>
       </div>
