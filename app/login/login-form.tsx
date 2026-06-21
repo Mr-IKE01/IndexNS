@@ -2,13 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Loader2, Lock } from 'lucide-react'
 
 export default function LoginForm() {
-  const [token, setToken]   = useState('')
-  const [error, setError]   = useState('')
+  const [token, setToken]     = useState('')
+  const [error, setError]     = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
@@ -37,36 +35,45 @@ export default function LoginForm() {
     }
   }
 
-  return (
-    <main className="flex min-h-screen items-center justify-center px-4 bg-background">
+  const isDisabled = loading || !token.trim()
 
+  return (
+    <main
+      className="flex min-h-screen items-center justify-center px-4"
+      style={{ background: '#0d0a17' }}
+    >
       {/* Ambient glow blobs */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
         <div
-          className="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full opacity-20 blur-3xl"
-          style={{ background: 'radial-gradient(ellipse, #818cf8 0%, #2dd4bf 50%, transparent 70%)' }}
+          className="absolute -top-60 left-1/2 -translate-x-1/2 w-[700px] h-[500px] rounded-full blur-3xl"
+          style={{ background: 'radial-gradient(ellipse, rgba(129,140,248,0.35) 0%, rgba(45,212,191,0.2) 50%, transparent 70%)' }}
         />
         <div
-          className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full opacity-10 blur-3xl"
-          style={{ background: 'radial-gradient(ellipse, #a78bfa 0%, transparent 70%)' }}
+          className="absolute -bottom-20 -right-20 w-[450px] h-[450px] rounded-full blur-3xl"
+          style={{ background: 'radial-gradient(ellipse, rgba(167,139,250,0.2) 0%, transparent 70%)' }}
+        />
+        <div
+          className="absolute bottom-0 -left-20 w-[350px] h-[350px] rounded-full blur-3xl"
+          style={{ background: 'radial-gradient(ellipse, rgba(45,212,191,0.12) 0%, transparent 70%)' }}
         />
       </div>
 
-      <div className="relative w-full max-w-sm space-y-8 z-10">
+      <div className="relative w-full max-w-md z-10">
 
-        {/* Logo + title */}
-        <div className="text-center space-y-4">
+        {/* Logo + heading */}
+        <div className="text-center mb-10">
           <div
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mx-auto"
+            className="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-6 relative overflow-hidden"
             style={{
-              background: 'oklch(0.17 0.06 285)',
-              border: '1px solid oklch(0.30 0.10 285)',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              boxShadow: '0 0 40px rgba(45,212,191,0.15)',
             }}
           >
             <span
-              className="text-3xl font-black tracking-tighter"
+              className="text-4xl font-black tracking-tighter relative z-10 select-none"
               style={{
-                background: 'linear-gradient(135deg, #2dd4bf, #818cf8)',
+                background: 'linear-gradient(135deg, #2dd4bf 0%, #818cf8 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
               }}
@@ -74,99 +81,112 @@ export default function LoginForm() {
               .NS
             </span>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-white">
-              SuiNS Indexer
-            </h1>
-            <p className="text-sm mt-1 text-zinc-500">
-              Private access — invite only
-            </p>
-          </div>
+          <h1 className="text-3xl font-bold text-white tracking-tight">SuiNS Indexer</h1>
+          <p className="mt-2 text-sm text-zinc-500">Private access — invite only</p>
         </div>
 
-        {/* Card */}
+        {/* Form card */}
         <div
-          className="rounded-2xl p-6 space-y-5 relative overflow-hidden"
+          className="rounded-2xl p-8 relative overflow-hidden"
           style={{
-            background: 'oklch(0.17 0.04 285)',
-            border: '1px solid oklch(0.28 0.08 285)',
-            boxShadow:
-              '0 0 0 1px oklch(0.30 0.10 195 / 0.3), 0 20px 40px -12px oklch(0.08 0.04 285)',
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            boxShadow: '0 0 0 1px rgba(130,100,255,0.08), 0 25px 50px -12px rgba(0,0,0,0.6)',
           }}
         >
-          {/* Top gradient line */}
+          {/* Top shimmer stripe */}
           <div
             className="absolute top-0 left-0 right-0 h-px"
             style={{
-              background:
-                'linear-gradient(90deg, transparent, #2dd4bf55, #818cf855, transparent)',
+              background: 'linear-gradient(90deg, transparent 0%, rgba(45,212,191,0.5) 40%, rgba(129,140,248,0.5) 60%, transparent 100%)',
             }}
           />
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
+
+            {/* Token input */}
             <div className="space-y-2">
-              <label htmlFor="token" className="text-sm font-medium text-white/80">
+              <label
+                htmlFor="token"
+                className="flex items-center gap-1.5 text-sm font-medium"
+                style={{ color: 'rgba(255,255,255,0.75)' }}
+              >
+                <Lock className="w-3.5 h-3.5 text-zinc-500" />
                 Access token
               </label>
-              <Input
-                id="token"
-                type="password"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder="tok_••••••••••••••••"
-                autoComplete="current-password"
-                autoFocus
-                disabled={loading}
-                className="h-10 font-mono text-sm text-white placeholder:text-white/20"
-                style={{
-                  background: 'oklch(0.13 0.04 285)',
-                  borderColor: 'oklch(0.28 0.08 285)',
-                }}
-              />
+
+              <div className="relative">
+                <input
+                  id="token"
+                  type="password"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  placeholder="tok_••••••••••••••••"
+                  autoComplete="current-password"
+                  autoFocus
+                  disabled={loading}
+                  className="w-full h-11 rounded-xl px-4 text-[13px] font-mono text-zinc-100 placeholder:text-zinc-600 outline-none transition-all duration-200 disabled:opacity-50"
+                  style={{
+                    background: 'rgba(0,0,0,0.4)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    color: '#e4e4e7',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(45,212,191,0.55)'
+                    e.currentTarget.style.boxShadow   = '0 0 0 3px rgba(45,212,191,0.10)'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'
+                    e.currentTarget.style.boxShadow   = 'none'
+                  }}
+                />
+              </div>
             </div>
 
+            {/* Error message */}
             {error && (
               <div
-                className="text-sm px-3 py-2.5 rounded-lg"
+                className="flex items-start gap-2.5 rounded-xl px-4 py-3 text-sm"
                 style={{
-                  background: 'oklch(0.60 0.22 25 / 0.12)',
-                  border: '1px solid oklch(0.60 0.22 25 / 0.3)',
-                  color: 'oklch(0.75 0.18 25)',
+                  background: 'rgba(239,68,68,0.08)',
+                  border: '1px solid rgba(239,68,68,0.25)',
+                  color: '#fca5a5',
                 }}
               >
-                {error}
+                <span className="mt-px shrink-0">⚠</span>
+                <span>{error}</span>
               </div>
             )}
 
-            <Button
+            {/* Submit */}
+            <button
               type="submit"
-              disabled={loading || !token.trim()}
-              className="w-full h-10 font-semibold text-sm"
+              disabled={isDisabled}
+              className="w-full h-11 rounded-xl text-[14px] font-semibold tracking-tight flex items-center justify-center gap-2 transition-all duration-200"
               style={{
-                background:
-                  loading || !token.trim()
-                    ? 'oklch(0.22 0.06 285)'
-                    : 'linear-gradient(135deg, #2dd4bf, #818cf8)',
-                color:
-                  loading || !token.trim()
-                    ? 'oklch(0.45 0.04 285)'
-                    : '#0d1117',
-                border: 'none',
+                background: isDisabled
+                  ? 'rgba(255,255,255,0.06)'
+                  : 'linear-gradient(135deg, #2dd4bf 0%, #818cf8 100%)',
+                color: isDisabled ? 'rgba(255,255,255,0.25)' : '#0d1117',
+                border: isDisabled ? '1px solid rgba(255,255,255,0.08)' : 'none',
+                boxShadow: isDisabled ? 'none' : '0 0 24px rgba(45,212,191,0.25)',
+                cursor: isDisabled ? 'not-allowed' : 'pointer',
               }}
             >
               {loading ? (
-                <span className="flex items-center gap-2">
+                <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Authenticating…
-                </span>
+                </>
               ) : (
                 'Access Indexer'
               )}
-            </Button>
+            </button>
           </form>
         </div>
 
-        <p className="text-center text-xs text-zinc-700">
+        {/* Footer note */}
+        <p className="text-center text-xs text-zinc-700 mt-6">
           Contact the admin if you need access
         </p>
       </div>
