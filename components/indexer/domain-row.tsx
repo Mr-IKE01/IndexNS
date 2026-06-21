@@ -161,7 +161,7 @@ export function DomainRow({ domain, index }: DomainRowProps) {
             <div className="flex items-center ml-2 gap-0.5">
               <CopyButton value={name} label="domain name" />
               {suiScanUrl && (
-                
+                <a
                   href={suiScanUrl}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -255,7 +255,7 @@ export function DomainRow({ domain, index }: DomainRowProps) {
           <div className="flex items-center gap-0.5 ml-1">
             <CopyButton value={name} label="domain name" />
             {suiScanUrl && (
-              
+              <a
                 href={suiScanUrl}
                 target="_blank"
                 rel="noopener noreferrer"
