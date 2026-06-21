@@ -163,7 +163,7 @@ export function DomainRow({ domain, index }: DomainRowProps) {
             <CopyButton value={name} label="domain name" />
 
             {suiScanUrl && (
-              
+              <a
                 href={suiScanUrl}
                 target="_blank"
                 rel="noopener noreferrer"
