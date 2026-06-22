@@ -35,10 +35,7 @@ export default async function Home() {
     .single()
 
   // Cast outside JSX to avoid the generic < being parsed as a JSX tag
-  const typedSyncState = syncState as Pick
-    SyncState,
-    'bootstrap_complete' | 'total_indexed' | 'last_synced_at'
-  > | null
+  const typedSyncState = syncState as Pick<SyncState, 'bootstrap_complete' | 'total_indexed' | 'last_synced_at'> | null
 
   const typedDomains = (initialDomains ?? []) as unknown as SuinsDomain[]
 
