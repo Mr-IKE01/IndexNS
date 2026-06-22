@@ -1,7 +1,7 @@
 import { SignJWT, jwtVerify } from 'jose'
 
 export const COOKIE_NAME = 'suins_session'
-const JWT_EXPIRY = '30d'
+const JWT_EXPIRY = '1h'
 
 function getSecret(): Uint8Array {
   const secret = process.env.COOKIE_SECRET
