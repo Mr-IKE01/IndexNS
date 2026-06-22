@@ -6,7 +6,6 @@ import { IndexerPage } from '@/components/indexer/indexer-page'
 import type { SuinsDomain, SyncState } from '@/types/domain'
 
 export default async function Home() {
-  // Auth gate
   const cookieStore = await cookies()
   const session = cookieStore.get(COOKIE_NAME)
   if (!session?.value || !(await verifySession(session.value))) {
@@ -14,8 +13,11 @@ export default async function Home() {
   }
 
   const supabase = createServerClient()
+  const now = Date.now()
 
-  // Initial domain fetch (active tab, first 50, soonest expiry first)
+  // Initial domain fetch — active tab, first 50, soonest expiry first.
+  // gt('expiry_timestamp_ms', now) ensures stale rows (status='active' but
+  // already past expiry) never reach the client, keeping timers valid.
   const { data: initialDomains, count: initialTotal } = await supabase
     .from('suins_domains')
     .select(
@@ -24,11 +26,11 @@ export default async function Home() {
       { count: 'exact' },
     )
     .eq('domain_status', 'active')
+    .gt('expiry_timestamp_ms', now)          // ← only genuinely active domains
     .order('expiry_timestamp_ms', { ascending: true })
     .order('id', { ascending: true })
     .range(0, 49)
 
-  // Sync state for progress banner
   const { data: syncState } = await supabase
     .from('sync_state')
     .select('bootstrap_complete, total_indexed, last_synced_at')
@@ -39,7 +41,12 @@ export default async function Home() {
     <IndexerPage
       initialDomains={(initialDomains ?? []) as unknown as SuinsDomain[]}
       initialTotal={initialTotal ?? 0}
-      syncState={syncState as Pick<SyncState, 'bootstrap_complete' | 'total_indexed' | 'last_synced_at'> | null}
+      syncState={
+        syncState as Pick
+          SyncState,
+          'bootstrap_complete' | 'total_indexed' | 'last_synced_at'
+        > | null
+      }
     />
   )
 }
