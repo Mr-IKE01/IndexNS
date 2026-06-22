@@ -15,9 +15,6 @@ export default async function Home() {
   const supabase = createServerClient()
   const now = Date.now()
 
-  // Initial domain fetch — active tab, first 50, soonest expiry first.
-  // gt('expiry_timestamp_ms', now) ensures stale rows (status='active' but
-  // already past expiry) never reach the client, keeping timers valid.
   const { data: initialDomains, count: initialTotal } = await supabase
     .from('suins_domains')
     .select(
@@ -26,7 +23,7 @@ export default async function Home() {
       { count: 'exact' },
     )
     .eq('domain_status', 'active')
-    .gt('expiry_timestamp_ms', now)          // ← only genuinely active domains
+    .gt('expiry_timestamp_ms', now)
     .order('expiry_timestamp_ms', { ascending: true })
     .order('id', { ascending: true })
     .range(0, 49)
@@ -37,16 +34,19 @@ export default async function Home() {
     .eq('id', 1)
     .single()
 
+  // Cast outside JSX to avoid the generic < being parsed as a JSX tag
+  const typedSyncState = syncState as Pick
+    <SyncState,
+    'bootstrap_complete' | 'total_indexed' | 'last_synced_at'
+  > | null
+
+  const typedDomains = (initialDomains ?? []) as unknown as SuinsDomain[]
+
   return (
     <IndexerPage
-      initialDomains={(initialDomains ?? []) as unknown as SuinsDomain[]}
+      initialDomains={typedDomains}
       initialTotal={initialTotal ?? 0}
-      syncState={
-        syncState as Pick
-          SyncState,
-          'bootstrap_complete' | 'total_indexed' | 'last_synced_at'
-        > | null
-      }
+      syncState={typedSyncState}
     />
   )
 }
