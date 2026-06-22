@@ -36,7 +36,7 @@ export default async function Home() {
 
   // Cast outside JSX to avoid the generic < being parsed as a JSX tag
   const typedSyncState = syncState as Pick
-    <SyncState,
+    SyncState,
     'bootstrap_complete' | 'total_indexed' | 'last_synced_at'
   > | null
 
