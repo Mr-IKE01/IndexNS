@@ -21,17 +21,16 @@ function formatCountdown(ms: number): string {
 
 function getColor(ms: number, variant: 'expiry' | 'grace'): string {
   if (variant === 'grace') {
-    if (ms < 86_400_000)      return '#f87171' // red     < 1 day
-    if (ms < 3 * 86_400_000)  return '#fb923c' // orange  < 3 days
-    return '#fbbf24'                            // amber   rest of grace
+    if (ms < 86_400_000)     return '#f87171'  // red    < 1 day
+    if (ms < 3 * 86_400_000) return '#fb923c'  // orange < 3 days
+    return '#fbbf24'                            // amber  rest of grace
   }
-  // expiry
-  if (ms <= 0)                return '#52525b' // zinc    expired
-  if (ms < 86_400_000)        return '#f87171' // red     < 1 day
-  if (ms < 7 * 86_400_000)    return '#fb923c' // orange  < 7 days
-  if (ms < 30 * 86_400_000)   return '#fbbf24' // yellow  < 30 days
-  if (ms < 90 * 86_400_000)   return '#a3e635' // lime    < 90 days
-  return '#34d399'                              // emerald > 90 days (safe)
+  if (ms <= 0)               return '#52525b'  // zinc   expired
+  if (ms < 86_400_000)       return '#f87171'  // red    < 1 day
+  if (ms < 7 * 86_400_000)   return '#fb923c'  // orange < 7 days
+  if (ms < 30 * 86_400_000)  return '#fbbf24'  // yellow < 30 days
+  if (ms < 90 * 86_400_000)  return '#a3e635'  // lime   < 90 days
+  return '#34d399'                              // emerald > 90 days
 }
 
 export function CountdownTimer({
@@ -39,32 +38,23 @@ export function CountdownTimer({
   variant   = 'expiry',
   className = '',
 }: CountdownTimerProps) {
-  // null = not yet mounted on client (server placeholder)
-  const [remaining, setRemaining] = useState<number | null>(null)
+  // Original working pattern — initialize directly, no null placeholder
+  const [remaining, setRemaining] = useState(() => Number(targetMs) - Date.now())
 
   useEffect(() => {
-    // Runs only on the client — no server/client Date.now() mismatch
     const tick = () => setRemaining(Number(targetMs) - Date.now())
-    tick()                           // set real value immediately on mount
+    tick()
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)
   }, [targetMs])
-
-  // Server-side / before hydration: show a neutral placeholder
-  if (remaining === null) {
-    return (
-      <span className={`font-mono text-[13px] tabular-nums text-zinc-700 ${className}`}>
-        ··:··:··:··
-      </span>
-    )
-  }
 
   const color  = getColor(remaining, variant)
   const urgent = remaining > 0 && remaining < 86_400_000
 
   return (
     <span
-      className={`font-mono text-[13px] tabular-nums ${urgent ? 'animate-pulse' : ''} ${className}`}
+      suppressHydrationWarning
+      className={`font-mono text-[13px] tabular-nums${urgent ? ' animate-pulse' : ''}${className ? ` ${className}` : ''}`}
       style={{ color }}
     >
       {formatCountdown(remaining)}
